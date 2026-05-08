@@ -86,7 +86,7 @@ markdown-fusion-compare/
 ├── prompts/
 │   └── markdown-fusion-compare-0.0.1.md   # Prompt original de generación
 ├── CHANGELOG.md
-├── obsidian_compare_0.0.1.py               # Aplicación principal
+├── markdown-fusion-compare.py               # Aplicación principal
 ├── README.md
 └── requirements.txt
 ```
