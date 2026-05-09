@@ -2,10 +2,11 @@
 ui/prop_row.py
 PropRow: one row in the YAML properties list.
 
-Changes in this version:
-  - Buttons ✎ and ··· moved to LEFT of key label
-  - Rich tooltip showing value from BOTH panels
-  - Right-click anywhere on the row opens the full context menu
+Layout (left to right): [✎][···][●][key][value…]
+- Buttons ✎ and ··· on the LEFT for unambiguous row identification
+- Rich tooltip showing values from BOTH panels
+- Right-click anywhere on the row opens the full context menu
+- Status colour applied via direct setStyleSheet (reliable across platforms)
 """
 
 from PySide6.QtWidgets import (
@@ -23,7 +24,6 @@ from core.compare import (
 
 
 # ── Action constants ──────────────────────────────────────────────────────────
-# Keep in sync with BULK_ACTIONS in props_panel.py
 ACTION_COPY         = "copy"
 ACTION_COPY_EMPTY   = "copy_empty"
 ACTION_ADD_LIST     = "add_list"
@@ -32,18 +32,39 @@ ACTION_CONVERT_WIKI = "convert_wiki"
 ACTION_DELETE       = "delete"
 
 
-# ── Status metadata ───────────────────────────────────────────────────────────
-# status → (dot_colour, status_tooltip, container_objectName)
-_STATUS_META: dict[str, tuple[str, str, str]] = {
-    EQUAL:        ("#a6e3a1", "Igual en ambos paneles",                      "RowEqual"),
-    DIFF:         ("#f9e2af", "Existe en ambos pero con valores diferentes", "RowDiff"),
-    WIKI_DIFF:    ("#89dceb", "Mismo texto pero uno es WikiLink",             "RowWikiDiff"),
-    LIST_PARTIAL: ("#cba6f7", "Lista con ítems parcialmente coincidentes",   "RowListPartial"),
-    LEFT_ONLY:    ("#f38ba8", "Solo existe en el panel izquierdo",           "RowLeftOnly"),
-    RIGHT_ONLY:   ("#b4befe", "Solo existe en el panel derecho",             "RowRightOnly"),
-    EMPTY_DIFF:   ("#585b70", "Uno o ambos lados están vacíos",              "RowEmptyDiff"),
+# ── Status → (dot_colour, left_border_colour, bg_even, bg_odd, status_tip) ───
+# bg_even / bg_odd provide zebra striping within each status group
+_STATUS_META: dict[str, tuple[str, str, str, str, str]] = {
+    EQUAL:        ("#a6e3a1", "#a6e3a1", "#1a2e1a", "#1d321d",
+                   "Igual en ambos paneles"),
+    DIFF:         ("#f9e2af", "#f9e2af", "#2e2a1a", "#32301e",
+                   "Existe en ambos pero con valores diferentes"),
+    WIKI_DIFF:    ("#89dceb", "#89dceb", "#1a2a2e", "#1e2e32",
+                   "Mismo texto pero uno es WikiLink"),
+    LIST_PARTIAL: ("#cba6f7", "#cba6f7", "#251a2e", "#291e32",
+                   "Lista con ítems parcialmente coincidentes"),
+    LEFT_ONLY:    ("#f38ba8", "#f38ba8", "#2e1a1a", "#321e1e",
+                   "Solo existe en el panel izquierdo"),
+    RIGHT_ONLY:   ("#b4befe", "#b4befe", "#1a1a2e", "#1e1e32",
+                   "Solo existe en el panel derecho"),
+    EMPTY_DIFF:   ("#585b70", "#585b70", "#222228", "#26262c",
+                   "Uno o ambos lados están vacíos"),
 }
-_DEFAULT_META = ("#45475a", "", "RowContainer")
+# Neutral zebra (no status yet)
+_NEUTRAL_EVEN = "#1e1e2e"
+_NEUTRAL_ODD  = "#222236"
+_ACTIVE_BG    = "#2a2a4e"
+_ACTIVE_BORDER = "#89b4fa"
+
+
+def _row_stylesheet(bg: str, border_colour: str, active: bool = False) -> str:
+    bg_use     = _ACTIVE_BG     if active else bg
+    bdr_colour = _ACTIVE_BORDER if active else border_colour
+    return (
+        f"QFrame {{ background: {bg_use}; "
+        f"border-left: 3px solid {bdr_colour}; "
+        f"border-bottom: 1px solid #2a2a3e; }}"
+    )
 
 
 class PropRow(QFrame):
@@ -52,26 +73,28 @@ class PropRow(QFrame):
     action_requested = Signal(str, str, object)       # (action, side, self)
     edit_committed   = Signal(str, str, str, object)  # (old_key, new_key, new_val_text, self)
 
-    def __init__(self, key: str, value, side: str, paired: bool = True, parent=None):
+    def __init__(self, key: str, value, side: str, paired: bool = True,
+                 row_index: int = 0, parent=None):
         super().__init__(parent)
-        self.key          = key
-        self.value        = value
-        self.side         = side       # 'left' | 'right'
-        self.paired       = paired
-        self._status      = ""
-        self._editing     = False
-        self._other_value = None       # value from the opposite panel (for tooltip)
+        self.key         = key
+        self.value       = value
+        self.side        = side
+        self.paired      = paired
+        self.row_index   = row_index   # 0-based; used for zebra striping
+        self._status     = ""
+        self._editing    = False
+        self._other_value = None
         self._build_ui()
-        self._apply_container_name("RowContainerUnpaired" if not paired else "RowContainer")
+        self._apply_style()
 
     # ── Build ─────────────────────────────────────────────────────────────
 
     def _build_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 1, 4, 1)
-        layout.setSpacing(4)
+        layout.setContentsMargins(2, 1, 4, 1)
+        layout.setSpacing(3)
 
-        # ── LEFT: edit button ─────────────────────────────────────────────
+        # Edit button (left)
         self.edit_btn = QPushButton("✎")
         self.edit_btn.setObjectName("PropEditBtn")
         self.edit_btn.setFixedSize(22, 22)
@@ -79,21 +102,21 @@ class PropRow(QFrame):
         self.edit_btn.clicked.connect(self._toggle_edit)
         layout.addWidget(self.edit_btn)
 
-        # ── LEFT: menu button ─────────────────────────────────────────────
+        # Menu button (left)
         self.menu_btn = QPushButton("···")
         self.menu_btn.setObjectName("PropBtn")
         self.menu_btn.setFixedSize(28, 22)
         self.menu_btn.clicked.connect(self._show_menu)
         layout.addWidget(self.menu_btn)
 
-        # ── Status dot ────────────────────────────────────────────────────
+        # Status dot
         self.status_dot = QLabel("●")
         self.status_dot.setFixedWidth(14)
         self.status_dot.setObjectName("StatusDot")
-        self.status_dot.setStyleSheet("color: #45475a;")
+        self.status_dot.setStyleSheet("color: #45475a; background: transparent;")
         layout.addWidget(self.status_dot)
 
-        # ── Key label / edit ──────────────────────────────────────────────
+        # Key label / edit
         self.key_lbl = QLabel(self.key)
         self.key_lbl.setFixedWidth(120)
         self.key_lbl.setObjectName("PropKey")
@@ -105,7 +128,7 @@ class PropRow(QFrame):
         self.key_edit.setVisible(False)
         layout.addWidget(self.key_edit)
 
-        # ── Value label / edit ────────────────────────────────────────────
+        # Value label / edit
         dv = display_value(self.value)
         self.val_lbl = QLabel(dv)
         self.val_lbl.setObjectName("PropVal")
@@ -119,31 +142,49 @@ class PropRow(QFrame):
         self.val_edit.returnPressed.connect(self._commit_edit)
         layout.addWidget(self.val_edit)
 
-        # Double-click on value label also opens edit
         self.val_lbl.mouseDoubleClickEvent = lambda _e: self._toggle_edit()
-
-        # Tooltip is applied to the whole frame
         self._update_tooltip()
+
+    # ── Style (colour + zebra) ────────────────────────────────────────────
+
+    def _apply_style(self, active: bool = False):
+        is_odd = (self.row_index % 2 == 1)
+        if self._status and self._status in _STATUS_META:
+            dot_c, border_c, bg_even, bg_odd, _ = _STATUS_META[self._status]
+            bg = bg_odd if is_odd else bg_even
+            self.status_dot.setStyleSheet(f"color: {dot_c}; background: transparent;")
+        else:
+            border_c = "#313244"
+            bg = _NEUTRAL_ODD if is_odd else _NEUTRAL_EVEN
+            self.status_dot.setStyleSheet("color: #45475a; background: transparent;")
+
+        self.setStyleSheet(_row_stylesheet(bg, border_c, active))
+
+    def set_status(self, status: str, row_index: int | None = None):
+        if row_index is not None:
+            self.row_index = row_index
+        self._status = status
+        if status in _STATUS_META:
+            _, _, _, _, tip = _STATUS_META[status]
+            self.status_dot.setToolTip(tip)
+        self._apply_style()
+
+    def set_row_index(self, index: int):
+        self.row_index = index
+        self._apply_style()
 
     # ── Tooltip ───────────────────────────────────────────────────────────
 
     def set_other_value(self, other_value):
-        """Called by PropsPanel after rebuild to inject the opposite panel value."""
         self._other_value = other_value
         self._update_tooltip()
 
     def _update_tooltip(self):
-        """Build a rich tooltip showing both panels' values."""
-        this_label  = "Izquierdo" if self.side == "left"  else "Derecho"
-        other_label = "Derecho"   if self.side == "left"  else "Izquierdo"
-
-        this_str  = value_to_str(self.value)
-
-        if self._other_value is None:
-            other_str = "(no existe en el otro panel)"
-        else:
-            other_str = value_to_str(self._other_value)
-
+        this_label  = "Izquierdo" if self.side == "left" else "Derecho"
+        other_label = "Derecho"   if self.side == "left" else "Izquierdo"
+        this_str    = value_to_str(self.value)
+        other_str   = value_to_str(self._other_value) if self._other_value is not None \
+                      else "(no existe en el otro panel)"
         tip = (
             f"<b>{this_label}:</b>  {this_str}<br>"
             f"<b>{other_label}:</b> {other_str}"
@@ -152,38 +193,7 @@ class PropRow(QFrame):
         self.val_lbl.setToolTip(tip)
         self.key_lbl.setToolTip(tip)
 
-    # ── Status colour ─────────────────────────────────────────────────────
-
-    def set_status(self, status: str):
-        self._status = status
-        colour, status_tip, container_name = _STATUS_META.get(status, _DEFAULT_META)
-        self.status_dot.setStyleSheet(f"color: {colour};")
-        self.status_dot.setToolTip(status_tip)
-        self._apply_container_name(container_name)
-
-    def _apply_container_name(self, name: str):
-        container = self.parent()
-        if container:
-            container.setObjectName(name)
-            container.style().unpolish(container)
-            container.style().polish(container)
-
-    # ── Active highlight ──────────────────────────────────────────────────
-
-    def _set_active_style(self, active: bool):
-        container = self.parent()
-        if not container:
-            return
-        if active:
-            container.setObjectName("RowContainerActive")
-        else:
-            _, _, name = _STATUS_META.get(self._status, _DEFAULT_META)
-            self._apply_container_name(name)
-            return
-        container.style().unpolish(container)
-        container.style().polish(container)
-
-    # ── Right-click anywhere on the row ───────────────────────────────────
+    # ── Right-click anywhere ──────────────────────────────────────────────
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.RightButton:
@@ -215,7 +225,6 @@ class PropRow(QFrame):
     def refresh_key(self, new_key: str):
         self.key = new_key
         self.key_lbl.setText(new_key)
-        self.key_lbl.setToolTip("")   # cleared; full tooltip on frame
         self.key_edit.setText(new_key)
         self._update_tooltip()
 
@@ -260,7 +269,7 @@ class PropRow(QFrame):
     # ── Context menu ──────────────────────────────────────────────────────
 
     def _show_menu(self):
-        self._set_active_style(True)
+        self._apply_style(active=True)
         menu = QMenu(self)
 
         other = "derecha" if self.side == "left" else "izquierda"
@@ -284,5 +293,6 @@ class PropRow(QFrame):
         menu.addSeparator()
         add("🗑 Eliminar propiedad", ACTION_DELETE)
 
-        menu.aboutToHide.connect(lambda: self._set_active_style(False))
+        menu.aboutToHide.connect(lambda: self._apply_style(active=False))
         menu.exec(QCursor.pos())
+

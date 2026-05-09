@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 from ui.styles import STYLESHEET
 from ui.main_window import MainWindow
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def main():
     app = QApplication(sys.argv)

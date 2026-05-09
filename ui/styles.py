@@ -85,14 +85,8 @@ QTabBar::tab {
 QTabBar::tab:selected    { background: #1e1e2e; color: #cdd6f4; border-bottom: 2px solid #89b4fa; }
 QTabBar::tab:hover:!selected { background: #24243e; color: #a6adc8; }
 
-/* ── Property rows ── */
-QScrollArea#PropsScroll   { border: none; background: #1e1e2e; }
-QFrame#RowContainer       { background: #1e1e2e; border-bottom: 1px solid #2a2a3e; }
-QFrame#RowContainer:hover { background: #24243e; }
-QFrame#RowContainerActive { background: #2a2a4e; border-bottom: 1px solid #4a4a7e; border-left: 3px solid #89b4fa; }
-QFrame#RowContainerUnpaired       { background: #1e1e2e; border-bottom: 1px dashed #3a2a2a; border-left: 3px solid #f38ba8; }
-QFrame#RowContainerUnpaired:hover { background: #2a1e1e; }
-
+/* ── Property rows — colours applied via setStyleSheet in PropRow ── */
+QScrollArea#PropsScroll { border: none; background: #1e1e2e; }
 QLabel#PropKey { color: #89b4fa; font-weight: bold; font-size: 12px; }
 QLabel#PropVal { color: #cdd6f4; font-size: 12px; }
 
@@ -246,6 +240,13 @@ QPushButton#SourceApplyBtn {
     border-radius: 4px; padding: 2px 12px; color: #a6e3a1;
 }
 QPushButton#SourceApplyBtn:hover { background: #2a8060; }
+
+/* ── Markdown preview ── */
+QTextEdit#MarkdownView {
+    background: #1e1e2e; color: #cdd6f4;
+    border: 1px solid #313244; border-radius: 4px;
+    padding: 8px;
+}
 
 /* ── Legend (status dot colours reference) ── */
 QFrame#NodosContainer  { background: #1e1e2e; }

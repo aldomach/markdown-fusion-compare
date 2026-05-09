@@ -1,5 +1,68 @@
 # Changelog
 
+## [0.0.7] - 2026-05-09
+
+### Added
+- **`core/node_dict.py` — NodeDictionary**: sistema persistente de diccionario de nodos
+  - Almacena nodos aceptados y lista negra en `data/nodes.json` y `data/blacklist.json`
+  - Soporta nodos de una o múltiples palabras
+  - `find_candidates()`: búsqueda priorizada en tres niveles:
+    1. Entradas del diccionario presentes en ambos cuerpos (color púrpura)
+    2. Frases de 2–4 palabras en común (color cyan)
+    3. Palabras individuales en común (color neutro)
+  - `apply_nodes_to_body()`: reemplaza frases largas antes que cortas para evitar solapamientos
+  - Stop-words expandidas (español + inglés) en `STOP_WORDS_ES` / `STOP_WORDS_EN`
+  - Instancia global compartida `get_node_dict()` en `body_editor.py`
+
+- **`ui/node_dict_dialog.py` — NodeDictDialog**: diálogo modal para gestionar el diccionario
+  - Pestaña "📚 Diccionario": agregar, eliminar, mover a lista negra, limpiar todo
+  - Pestaña "🚫 Lista negra": agregar, eliminar, mover al diccionario, limpiar todo
+  - Accesible desde el botón "📚 Diccionario" en la barra de Conectar Nodos
+
+- **`ui/highlighter.py` — MdHighlighter**: highlighter compartido extraído a su propio módulo
+  - Parámetro `body_only`: modo cuerpo (sin detección de frontmatter YAML)
+  - Soporta: delimitadores YAML, claves/valores, listas, encabezados Markdown,
+    WikiLinks, links Markdown, código inline, negrita, cursiva, blockquotes, tags `#`, HR
+  - Usado por `BodyEditor` (body_only=True) y `SourceView` (full file)
+
+- **`ui/markdown_view.py` — MarkdownView**: nueva pestaña "Markdown" en cada panel
+  - Renderizado HTML de solo lectura sin dependencias externas (regex propio)
+  - Soporta: H1–H4, negrita, cursiva, tachado, código inline, bloques de código,
+    listas ordenadas/desordenadas, blockquotes, WikiLinks (pill coloreado),
+    links Markdown, HR, saltos de párrafo
+  - Se refresca automáticamente al seleccionar la pestaña o manualmente con "🔄 Actualizar"
+
+- **Conectar Nodos — mejoras**:
+  - Checkbox "Ignorar conectores" para activar/desactivar el filtro de stop-words
+  - Resultados agrupados en secciones: "Del diccionario", "Frases en común", "Palabras en común"
+  - Menú contextual por ítem: "✔ Aceptar → guardar en diccionario" / "🚫 Ignorar → agregar a lista negra" / "🔗 Convertir a WikiLink en ambos ahora"
+  - Botón "💾 Guardar en diccionario" para guardar los ítems seleccionados
+  - Botón "📚 Diccionario" en la barra toggle para abrir `NodeDictDialog`
+
+- **Zebra striping en filas de propiedades**: filas pares/impares con fondo levemente distinto
+  dentro de cada grupo de color de estado
+- `PropRow` recibe `row_index` para el zebra striping; `set_status()` acepta `row_index` opcional
+
+### Changed
+- `PropRow`: colores de fila aplicados vía `setStyleSheet` directo en lugar de
+  `objectName` + QSS global (más confiable entre plataformas)
+- `_STATUS_META` ampliado con `bg_even` / `bg_odd` / `border_colour` por estado
+- `_set_active_style()` reemplazado por `_apply_style(active=bool)` unificado
+- `SourceView` importado en forma lazy dentro de `_build_ui()` para evitar imports circulares
+- `_sync_source_view()`: el tab Fuente se mantiene sincronizado en background
+  al modificar propiedades (sin cambiar de pestaña)
+- `_on_tab_changed()` actualiza tanto Fuente como la nueva pestaña Markdown
+- `apply_node_connections()` en `MainWindow` usa `NodeDictionary.apply_nodes_to_body()`
+  (reemplaza a largo primero) en lugar de `apply_wikilinks_to_body()`
+- `find_common_words()` en `MainWindow` marcado como legacy (supersedido por `NodeDictionary`)
+- `main.py`: agrega `sys.path.insert(0, ...)` para garantizar imports desde el directorio raíz
+
+### Removed
+- QSS de `RowContainer`, `RowContainerActive`, `RowContainerUnpaired` eliminado de
+  `styles.py` (reemplazado por `setStyleSheet` inline en `PropRow`)
+- `_MdHighlighter` privado de `source_view.py` eliminado (reemplazado por `MdHighlighter` compartido)
+
+
 ## [0.0.6] - 2026-05-09
 
 ### Added

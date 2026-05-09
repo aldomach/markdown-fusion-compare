@@ -23,7 +23,6 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QCursor
 
 from ui.body_editor import BodyEditor
-from ui.source_view import SourceView
 
 from core.models import NoteFile
 from core.utils import now_timestamp, is_empty_value, convert_value_to_wikilink
@@ -74,17 +73,20 @@ class PropsPanel(QWidget):
         root.addWidget(self._build_header())
         root.addWidget(self._build_path_label())
 
+        from ui.source_view import SourceView
+        from ui.markdown_view import MarkdownView
+
         self.tabs = QTabWidget()
         self.tabs.setObjectName("PanelTabs")
         self.tabs.addTab(self._build_props_tab(), "Propiedades YAML")
         self.tabs.addTab(self._build_body_tab(),  "Cuerpo")
 
-        self._source_view = SourceView(self)
-        self.tabs.addTab(self._source_view, "Fuente")
+        self._source_view   = SourceView(self)
+        self._markdown_view = MarkdownView(self)
+        self.tabs.addTab(self._source_view,   "Fuente")
+        self.tabs.addTab(self._markdown_view, "Markdown")
 
-        # Refresh source tab content when it becomes visible
         self.tabs.currentChanged.connect(self._on_tab_changed)
-
         root.addWidget(self.tabs)
 
     def _build_header(self) -> QFrame:
@@ -179,12 +181,14 @@ class PropsPanel(QWidget):
         return bar
 
     def _on_tab_changed(self, index: int):
-        """Refresh source view when its tab is selected."""
-        source_index = self.tabs.indexOf(self._source_view)
-        if index == source_index:
-            # Sync body from editor first
-            self.note._body = self.body_edit.toPlainText()
+        """Refresh source/markdown view when their tab is selected."""
+        self.note._body = self.body_edit.toPlainText()
+        source_idx   = self.tabs.indexOf(self._source_view)
+        markdown_idx = self.tabs.indexOf(self._markdown_view)
+        if index == source_idx:
             self._source_view.refresh()
+        elif index == markdown_idx:
+            self._markdown_view.refresh()
 
     def _build_bulk_bar(self) -> QFrame:
         bar = QFrame()
@@ -325,6 +329,7 @@ class PropsPanel(QWidget):
     def _insert_row(self, key: str, val, paired: bool = True,
                     status: str = "", other_val=None):
         """Create container + checkbox + PropRow and add to layout."""
+        row_index = len(self.prop_rows)   # 0-based insertion order
         container = QFrame()
         container.setObjectName("RowContainer")
 
@@ -337,11 +342,12 @@ class PropsPanel(QWidget):
         rl.addWidget(cb)
         self.row_checks[key] = cb
 
-        row = PropRow(key, val, self.side, paired, parent=container)
+        row = PropRow(key, val, self.side, paired,
+                      row_index=row_index, parent=container)
         row.action_requested.connect(self._on_row_action)
         row.edit_committed.connect(self._on_edit_committed)
         if status:
-            row.set_status(status)
+            row.set_status(status, row_index)
         if other_val is not None:
             row.set_other_value(other_val)
         rl.addWidget(row)
@@ -403,17 +409,20 @@ class PropsPanel(QWidget):
         self.note.set_prop(key, value)
         self._refresh_or_insert(key, value)
         self._update_undo_btn()
+        self._sync_source_view()
 
     def set_prop_empty(self, key: str):
         self.note.set_prop_empty(key)
         self._refresh_or_insert(key, "")
         self._update_undo_btn()
+        self._sync_source_view()
 
     def add_to_list_prop(self, key: str, value):
         self.note.add_to_list_prop(key, value)
         new_val = self.note.props[key]
         self._refresh_or_insert(key, new_val)
         self._update_undo_btn()
+        self._sync_source_view()
 
     def delete_prop(self, key: str):
         self.note.delete_prop(key)
@@ -425,18 +434,29 @@ class PropsPanel(QWidget):
                 container.deleteLater()
         self.row_checks.pop(key, None)
         self._update_undo_btn()
+        self._sync_source_view()
 
     def convert_to_wikilink(self, key: str):
         self.note.convert_prop_to_wikilink(key)
         if key in self.prop_rows:
             self.prop_rows[key].refresh(self.note.props.get(key, ""))
         self._update_undo_btn()
+        self._sync_source_view()
 
     def _refresh_or_insert(self, key: str, value):
         if key in self.prop_rows:
             self.prop_rows[key].refresh(value)
         else:
             self._insert_row(key, value)
+
+    def _sync_source_view(self):
+        """Keep source tab in sync without switching to it."""
+        source_idx = self.tabs.indexOf(self._source_view)
+        # Only auto-refresh if not currently being viewed
+        # (if viewed, _on_tab_changed already handles it)
+        if self.tabs.currentIndex() != source_idx:
+            self.note._body = self.body_edit.toPlainText()
+            self._source_view.refresh()
 
     # ── Undo ──────────────────────────────────────────────────────────────
 

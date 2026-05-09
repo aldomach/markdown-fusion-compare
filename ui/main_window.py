@@ -149,21 +149,26 @@ class MainWindow(QMainWindow):
     # ── Conectar Nodos ────────────────────────────────────────────────────
 
     def find_common_words(self, min_len: int) -> set[str]:
-        """Called by BodyEditor.search_btn. Returns words common to both bodies."""
+        """Legacy helper — now superseded by NodeDictionary in body_editor."""
         left_body  = self.left_panel.body_edit.toPlainText()
         right_body = self.right_panel.body_edit.toPlainText()
         return find_common_words(left_body, right_body, min_len)
 
     def apply_node_connections(self, words: list[str]):
-        """Replace selected words with [[word]] in both panel bodies."""
+        """Replace selected words/phrases with [[word]] in both panel bodies.
+        Uses NodeDictionary.apply_nodes_to_body so longer phrases
+        are replaced before shorter words.
+        """
+        from ui.body_editor import get_node_dict
+        nd = get_node_dict()
         for panel in (self.left_panel, self.right_panel):
             current = panel.body_edit.toPlainText()
-            updated = apply_wikilinks_to_body(current, words)
+            updated = nd.apply_nodes_to_body(current, words)
             if updated != current:
                 panel.body_edit.setPlainText(updated)
                 panel.note.set_body(updated)
         self.statusBar().showMessage(
-            f"🔗 Conectar Nodos: {len(words)} palabra(s) convertida(s) a WikiLink en ambos paneles."
+            f"🔗 Conectar Nodos: {len(words)} elemento(s) convertido(s) a WikiLink en ambos paneles."
         )
 
     # ── Template ──────────────────────────────────────────────────────────
