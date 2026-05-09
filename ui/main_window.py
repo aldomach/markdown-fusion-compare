@@ -116,10 +116,10 @@ class MainWindow(QMainWindow):
     # ── Recompare ─────────────────────────────────────────────────────────
 
     def _recompare(self, silent: bool = False):
-        left_keys  = set(self.left_panel.note.props.keys())
-        right_keys = set(self.right_panel.note.props.keys())
-        self.left_panel.rebuild_rows(other_keys=right_keys)
-        self.right_panel.rebuild_rows(other_keys=left_keys)
+        left_props  = self.left_panel.note.props
+        right_props = self.right_panel.note.props
+        self.left_panel.rebuild_rows(other_props=right_props)
+        self.right_panel.rebuild_rows(other_props=left_props)
         if not silent:
             self.statusBar().showMessage("Comparación actualizada.")
 

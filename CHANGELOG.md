@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.0.6] - 2026-05-09
+
+### Added
+- **Barra de búsqueda / extracción** encima de la lista de propiedades:
+  - Campo de texto con placeholder "Buscar en cuerpo / agregar propiedad…"
+  - Botón "🔍" busca el término en el cuerpo, cambia a la pestaña Cuerpo
+    y posiciona el cursor en la primera coincidencia
+  - Botón "+ Agregar como propiedad" crea una nueva clave YAML vacía con el texto del campo
+  - Botón "+ Agregar a tags" agrega el texto como ítem de lista en la propiedad `tags`
+- **Tooltip enriquecido por fila**: al pasar el cursor sobre cualquier parte de una fila
+  se muestra el valor del panel propio y del panel opuesto (HTML con `<b>Izquierdo/Derecho</b>`)
+- **Clic derecho en cualquier parte de la fila** abre el menú contextual
+  (antes solo funcionaba en el botón `···`)
+- Pestaña **Fuente** integrada en `PropsPanel` (conectada desde `props_panel.py`,
+  se refresca automáticamente al seleccionarla sincronizando el cuerpo desde el editor)
+
+### Changed
+- **Botones ✎ y `···` movidos a la izquierda** del dot de estado y la clave,
+  para que las acciones sean accesibles sin llegar al extremo derecho de la fila
+- `rebuild_rows()` ahora recibe `other_props: dict` en lugar de `other_keys: set`,
+  pasa los valores al lado opuesto para el tooltip y el estado de comparación
+- `_insert_row()` recibe `status` y `other_val` y los aplica al `PropRow` inmediatamente
+- `PropRow.set_other_value(other_value)`: nuevo método para inyectar el valor opuesto
+  y reconstruir el tooltip
+- `PropRow.refresh()` y `refresh_key()` actualizan el tooltip automáticamente
+- `PropRow._update_tooltip()`: construye el tooltip HTML combinado y lo aplica
+  al frame, `val_lbl` y `key_lbl`
+- `_recompare()` en `MainWindow` pasa los dicts completos (`other_props`) en lugar
+  de solo los conjuntos de claves
+- `PropsPanel` añade `_status_map: dict[str, str]` para persistir el estado de
+  comparación entre rebuilds
+
+### Fixed
+- Al cerrar el menú contextual, el highlight activo restaura el color del estado
+  de comparación correctamente en todos los casos (no solo `RowContainerUnpaired`)
+- `PropRow.refresh()`: eliminado `setToolTip` redundante sobre `val_lbl`
+  (el tooltip ahora vive en el frame completo)
+
 ## [0.0.5] - 2026-05-09
 
 ### Added

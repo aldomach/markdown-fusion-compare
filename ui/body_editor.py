@@ -227,19 +227,41 @@ class _BodyTextEdit(QTextEdit):
     def contextMenuEvent(self, event: QContextMenuEvent):
         menu = self.createStandardContextMenu()
 
-        cursor = self.textCursor()
+        cursor        = self.textCursor()
         selected_text = cursor.selectedText().strip()
 
         if selected_text:
             menu.addSeparator()
-            other = "derecha" if self.side == "left" else "izquierda"
-            arr   = "→" if self.side == "left" else "←"
-            action = menu.addAction(f"{arr} Copiar selección al panel {other}")
-            action.triggered.connect(lambda: self._copy_selection_to_other(selected_text))
+            other  = "derecha"   if self.side == "left" else "izquierda"
+            arr    = "→"         if self.side == "left" else "←"
+
+            menu.addAction(
+                f"{arr} Copiar selección al panel {other} — en posición del cursor"
+            ).triggered.connect(
+                lambda: self._copy_selection_to_other(selected_text, "cursor")
+            )
+            menu.addAction(
+                f"{arr} Copiar selección al panel {other} — al principio"
+            ).triggered.connect(
+                lambda: self._copy_selection_to_other(selected_text, "start")
+            )
+            menu.addAction(
+                f"{arr} Copiar selección al panel {other} — al final"
+            ).triggered.connect(
+                lambda: self._copy_selection_to_other(selected_text, "end")
+            )
 
         menu.exec(event.globalPos())
 
-    def _copy_selection_to_other(self, text: str):
+    def _copy_selection_to_other(self, text: str, position: str):
+        """Copy selected text to the other panel at the given position.
+
+        position:
+          'cursor' — inserted at the other panel's current cursor position
+          'start'  — prepended to the body
+          'end'    — appended to the body
+        Deduplication: if the exact text already exists in the destination, skip.
+        """
         from ui.main_window import MainWindow
         mw: MainWindow | None = None
         w = self
@@ -252,14 +274,30 @@ class _BodyTextEdit(QTextEdit):
             return
 
         dst_panel = mw.right_panel if self.side == "left" else mw.left_panel
-        dst_body  = dst_panel.body_edit.toPlainText()
+        dst_edit  = dst_panel.body_edit
+        dst_body  = dst_edit.toPlainText()
 
-        # Append only if not already present
         if text.strip() in dst_body:
             mw.statusBar().showMessage("El texto seleccionado ya existe en el otro panel.")
             return
 
-        new_body = (dst_body.rstrip() + "\n\n" + text).lstrip() if dst_body.strip() else text
-        dst_panel.body_edit.setPlainText(new_body)
-        dst_panel.note.set_body(new_body)
-        mw.statusBar().showMessage("Selección copiada al otro panel.")
+        if position == "cursor":
+            dst_cursor = dst_edit.textCursor()
+            dst_cursor.insertText(("\n" if not dst_cursor.atStart() else "") + text)
+            dst_edit.setTextCursor(dst_cursor)
+            new_body = dst_edit.toPlainText()
+
+        elif position == "start":
+            new_body = (text + "\n\n" + dst_body.lstrip()).rstrip() if dst_body.strip() else text
+
+        else:  # end
+            new_body = (dst_body.rstrip() + "\n\n" + text).lstrip() if dst_body.strip() else text
+
+        if position != "cursor":
+            dst_edit.setPlainText(new_body)
+
+        dst_panel.note.set_body(dst_edit.toPlainText())
+        mw.statusBar().showMessage(
+            f"Selección copiada al panel {'derecho' if self.side == 'left' else 'izquierdo'} "
+            f"({'posición del cursor' if position == 'cursor' else position})."
+        )

@@ -15,15 +15,19 @@ from typing import TYPE_CHECKING
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame,
     QLabel, QPushButton, QCheckBox, QComboBox,
-    QScrollArea, QTabWidget, QTextEdit,
-    QFileDialog, QMessageBox, QSizePolicy
+    QScrollArea, QTabWidget, QTextEdit, QLineEdit,
+    QFileDialog, QMessageBox, QSizePolicy, QCompleter,
+    QMenu
 )
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QCursor
 
 from ui.body_editor import BodyEditor
+from ui.source_view import SourceView
 
 from core.models import NoteFile
 from core.utils import now_timestamp, is_empty_value, convert_value_to_wikilink
+from core.compare import compare_props, LEFT_ONLY, RIGHT_ONLY
 from ui.prop_row import (
     PropRow,
     ACTION_COPY, ACTION_COPY_EMPTY, ACTION_ADD_LIST,
@@ -54,8 +58,9 @@ class PropsPanel(QWidget):
         super().__init__(parent)
         self.side = side
         self.note = NoteFile()
-        self.prop_rows: dict[str, PropRow] = {}
-        self.row_checks: dict[str, QCheckBox] = {}
+        self.prop_rows:   dict[str, PropRow]   = {}
+        self.row_checks:  dict[str, QCheckBox] = {}
+        self._status_map: dict[str, str]       = {}   # key → compare status
         self._updated_checkbox: QCheckBox | None = None
         self._build_ui()
 
@@ -73,6 +78,13 @@ class PropsPanel(QWidget):
         self.tabs.setObjectName("PanelTabs")
         self.tabs.addTab(self._build_props_tab(), "Propiedades YAML")
         self.tabs.addTab(self._build_body_tab(),  "Cuerpo")
+
+        self._source_view = SourceView(self)
+        self.tabs.addTab(self._source_view, "Fuente")
+
+        # Refresh source tab content when it becomes visible
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
         root.addWidget(self.tabs)
 
     def _build_header(self) -> QFrame:
@@ -124,8 +136,55 @@ class PropsPanel(QWidget):
         tl.setContentsMargins(0, 0, 0, 0)
         tl.setSpacing(0)
         tl.addWidget(self._build_bulk_bar())
+        tl.addWidget(self._build_search_bar())
         tl.addWidget(self._build_props_scroll())
         return tab
+
+    def _build_search_bar(self) -> QFrame:
+        """Search + extract-to-YAML bar shown above the prop list."""
+        bar = QFrame()
+        bar.setObjectName("SearchBar")
+        bl = QHBoxLayout(bar)
+        bl.setContentsMargins(8, 3, 8, 3)
+        bl.setSpacing(6)
+
+        self._search_edit = QLineEdit()
+        self._search_edit.setObjectName("SearchEdit")
+        self._search_edit.setPlaceholderText("Buscar en cuerpo / agregar propiedad…")
+        self._search_edit.setFixedHeight(26)
+        self._search_edit.returnPressed.connect(self._search_in_body)
+        bl.addWidget(self._search_edit, stretch=1)
+
+        search_btn = QPushButton("🔍")
+        search_btn.setObjectName("SearchIconBtn")
+        search_btn.setFixedSize(28, 26)
+        search_btn.setToolTip("Buscar en el cuerpo")
+        search_btn.clicked.connect(self._search_in_body)
+        bl.addWidget(search_btn)
+
+        add_prop_btn = QPushButton("+ Agregar como propiedad")
+        add_prop_btn.setObjectName("BulkApplyBtn")
+        add_prop_btn.setFixedHeight(26)
+        add_prop_btn.setToolTip("Agrega el texto del campo como nueva propiedad YAML")
+        add_prop_btn.clicked.connect(self._add_as_prop)
+        bl.addWidget(add_prop_btn)
+
+        add_tag_btn = QPushButton("+ Agregar a tags")
+        add_tag_btn.setObjectName("BulkApplyBtn")
+        add_tag_btn.setFixedHeight(26)
+        add_tag_btn.setToolTip("Agrega el texto a la propiedad 'tags' como ítem de lista")
+        add_tag_btn.clicked.connect(self._add_as_tag)
+        bl.addWidget(add_tag_btn)
+
+        return bar
+
+    def _on_tab_changed(self, index: int):
+        """Refresh source view when its tab is selected."""
+        source_index = self.tabs.indexOf(self._source_view)
+        if index == source_index:
+            # Sync body from editor first
+            self.note._body = self.body_edit.toPlainText()
+            self._source_view.refresh()
 
     def _build_bulk_bar(self) -> QFrame:
         bar = QFrame()
@@ -239,8 +298,15 @@ class PropsPanel(QWidget):
         self.rebuild_rows()
         self._update_undo_btn()
 
-    def rebuild_rows(self, other_keys: set[str] | None = None):
-        """Clear and rebuild all property rows, sorted alphabetically."""
+    def rebuild_rows(self, other_props: dict | None = None):
+        """Clear and rebuild all property rows, sorted alphabetically.
+        Accepts other_props dict (not just keys) to compute status colours.
+        """
+        if other_props is not None:
+            self._status_map = compare_props(self.note.props, other_props)
+        else:
+            self._status_map = {}
+
         while self.props_layout.count() > 1:
             item = self.props_layout.takeAt(0)
             if item.widget():
@@ -249,13 +315,18 @@ class PropsPanel(QWidget):
         self.row_checks.clear()
 
         for key in self.note.sorted_keys():
-            paired = (other_keys is None) or (key in other_keys)
-            self._insert_row(key, self.note.props[key], paired)
+            status     = self._status_map.get(key, "")
+            paired     = (other_props is None) or (key in other_props) or (
+                status not in (LEFT_ONLY, RIGHT_ONLY, "")
+            )
+            other_val  = other_props.get(key) if other_props is not None else None
+            self._insert_row(key, self.note.props[key], paired, status, other_val)
 
-    def _insert_row(self, key: str, val, paired: bool = True):
+    def _insert_row(self, key: str, val, paired: bool = True,
+                    status: str = "", other_val=None):
         """Create container + checkbox + PropRow and add to layout."""
         container = QFrame()
-        container.setObjectName("RowContainerUnpaired" if not paired else "RowContainer")
+        container.setObjectName("RowContainer")
 
         rl = QHBoxLayout(container)
         rl.setContentsMargins(4, 0, 4, 0)
@@ -269,10 +340,62 @@ class PropsPanel(QWidget):
         row = PropRow(key, val, self.side, paired, parent=container)
         row.action_requested.connect(self._on_row_action)
         row.edit_committed.connect(self._on_edit_committed)
+        if status:
+            row.set_status(status)
+        if other_val is not None:
+            row.set_other_value(other_val)
         rl.addWidget(row)
 
         self.props_layout.insertWidget(self.props_layout.count() - 1, container)
         self.prop_rows[key] = row
+
+    # ── Search / add-as-prop ──────────────────────────────────────────────
+
+    def _search_in_body(self):
+        """Highlight search term in body editor."""
+        term = self._search_edit.text().strip()
+        if not term:
+            return
+        body = self.body_edit.toPlainText()
+        if term.lower() in body.lower():
+            # Switch to body tab and let the user see the result
+            self.tabs.setCurrentIndex(1)
+            from PySide6.QtGui import QTextCursor, QTextDocument
+            cursor = self.body_edit.document().find(term, 0, QTextDocument.FindFlag(0))
+            if not cursor.isNull():
+                self.body_edit.setTextCursor(cursor)
+            mw = self._main_window()
+            if mw:
+                mw.statusBar().showMessage(f"'{term}' encontrado en el cuerpo.")
+        else:
+            mw = self._main_window()
+            if mw:
+                mw.statusBar().showMessage(f"'{term}' no encontrado en el cuerpo.")
+
+    def _add_as_prop(self):
+        """Add search field text as a new blank YAML property."""
+        text = self._search_edit.text().strip()
+        if not text:
+            return
+        # Use text as key, empty value
+        self.set_prop(text, "")
+        self._search_edit.clear()
+        mw = self._main_window()
+        if mw:
+            mw._recompare(silent=True)
+            mw.statusBar().showMessage(f"Propiedad '{text}' agregada.")
+
+    def _add_as_tag(self):
+        """Add search field text as an item in the 'tags' list property."""
+        text = self._search_edit.text().strip()
+        if not text:
+            return
+        self.add_to_list_prop("tags", text)
+        self._search_edit.clear()
+        mw = self._main_window()
+        if mw:
+            mw._recompare(silent=True)
+            mw.statusBar().showMessage(f"'{text}' agregado a tags.")
 
     # ── Prop update helpers (go through NoteFile) ─────────────────────────
 
