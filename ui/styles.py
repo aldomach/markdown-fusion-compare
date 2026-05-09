@@ -201,7 +201,53 @@ QDialogButtonBox QPushButton {
 }
 QDialogButtonBox QPushButton:hover { background: #45475a; }
 
-/* ── Conectar Nodos ── */
+/* ── Property row status colours ── */
+QFrame#RowEqual        { background: #1a2e1a; border-bottom: 1px solid #2a3e2a; border-left: 3px solid #a6e3a1; }
+QFrame#RowEqual:hover  { background: #203820; }
+QFrame#RowDiff         { background: #2e2a1a; border-bottom: 1px solid #3e3a2a; border-left: 3px solid #f9e2af; }
+QFrame#RowDiff:hover   { background: #383220; }
+QFrame#RowWikiDiff     { background: #1a2a2e; border-bottom: 1px solid #2a3a3e; border-left: 3px solid #89dceb; }
+QFrame#RowWikiDiff:hover { background: #203238; }
+QFrame#RowListPartial  { background: #251a2e; border-bottom: 1px solid #352a3e; border-left: 3px solid #cba6f7; }
+QFrame#RowListPartial:hover { background: #302038; }
+QFrame#RowLeftOnly     { background: #2e1a1a; border-bottom: 1px dashed #3e2a2a; border-left: 3px solid #f38ba8; }
+QFrame#RowLeftOnly:hover  { background: #382020; }
+QFrame#RowRightOnly    { background: #1a1a2e; border-bottom: 1px dashed #2a2a3e; border-left: 3px solid #b4befe; }
+QFrame#RowRightOnly:hover { background: #202038; }
+QFrame#RowEmptyDiff    { background: #222228; border-bottom: 1px solid #313244; border-left: 3px solid #585b70; }
+QFrame#RowEmptyDiff:hover { background: #282830; }
+QFrame#RowContainerActive { background: #2a2a4e; border-bottom: 1px solid #4a4a7e; border-left: 3px solid #89b4fa; }
+
+/* ── Status dot ── */
+QLabel#StatusDot { font-size: 10px; }
+
+/* ── Search bar ── */
+QFrame#SearchBar { background: #181825; border-bottom: 1px solid #313244; }
+QLineEdit#SearchEdit {
+    background: #24243e; border: 1px solid #45475a; border-radius: 4px;
+    padding: 2px 8px; color: #cdd6f4; font-size: 12px;
+}
+QLineEdit#SearchEdit:focus { border-color: #89b4fa; }
+QPushButton#SearchIconBtn {
+    background: #313244; border: 1px solid #45475a; border-radius: 4px; color: #89b4fa;
+}
+QPushButton#SearchIconBtn:hover { background: #45475a; }
+
+/* ── Source view ── */
+QTextEdit#SourceEdit {
+    background: #13131f; color: #cdd6f4;
+    border: 1px solid #313244; border-radius: 4px;
+    padding: 8px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px;
+    selection-background-color: #45475a;
+}
+QLabel#SourceInfoLabel { color: #6c7086; font-size: 11px; }
+QPushButton#SourceApplyBtn {
+    background: #1e6b4a; border: 1px solid #40a070;
+    border-radius: 4px; padding: 2px 12px; color: #a6e3a1;
+}
+QPushButton#SourceApplyBtn:hover { background: #2a8060; }
+
+/* ── Legend (status dot colours reference) ── */
 QFrame#NodosContainer  { background: #1e1e2e; }
 QFrame#NodosPanelInner {
     background: #181825; border: 1px solid #313244;

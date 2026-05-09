@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.0.5] - 2026-05-09
+
+### Added
+- **Sistema de comparación semántica de propiedades** (`core/compare.py`):
+  nuevo módulo puro con 7 estados de comparación por propiedad:
+  - `equal` — valores idénticos en ambos paneles
+  - `diff` — ambos existen pero con valores distintos
+  - `wiki_diff` — mismo texto pero uno es WikiLink y el otro no
+  - `list_partial` — listas con ítems parcialmente coincidentes
+  - `left_only` — clave solo en el panel izquierdo
+  - `right_only` — clave solo en el panel derecho
+  - `empty_diff` — uno o ambos lados están vacíos
+- **Dot de estado por fila**: cada `PropRow` muestra un círculo "●" coloreado
+  con tooltip explicativo según el estado de comparación
+- **Colores de fondo por estado** en `ui/styles.py`: cada estado tiene su propio
+  `QFrame#Row<Status>` con color de borde izquierdo y fondo diferenciado (Catppuccin)
+- **Vista Fuente** (`ui/source_view.py`): nueva pestaña "Fuente" en cada panel
+  con editor de texto completo del archivo (YAML + cuerpo):
+  - Syntax highlighting propio (`_MdHighlighter`): claves YAML, valores, listas,
+    encabezados Markdown, WikiLinks y negrita
+  - Botón "✔ Aplicar cambios" re-parsea el contenido y actualiza el modelo y los paneles
+  - Se recarga automáticamente al cambiar a esta pestaña
+
+### Changed
+- `PropRow.set_status(status)`: nuevo método público para aplicar el estado de
+  comparación desde `PropsPanel.rebuild_rows()`
+- `PropRow._set_active_style()`: al cerrar el menú contextual restaura el color
+  del estado de comparación en lugar del color base genérico
+- `PropRow._apply_container_name()`: reemplaza `_set_base_style()`, reutilizado
+  por `set_status()` y el highlight activo
+- Menú contextual de `PropRow`: refactorizado con función `add()` local, más legible
+- `ui/styles.py`: QSS ampliado con estilos para `SearchBar`, `SearchEdit`,
+  `SourceEdit`, `SourceApplyBtn`, `SourceInfoLabel` y la leyenda de dots de estado
 
 ## [0.0.4] - 2026-05-09
 
