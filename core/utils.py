@@ -98,3 +98,59 @@ def new_lines_preview(src_body: str, dst_body: str) -> list[str]:
 def now_timestamp() -> str:
     """Return current datetime in Obsidian-compatible format: YYYY-MM-DDTHH:MM"""
     return datetime.now().strftime("%Y-%m-%dT%H:%M")
+
+
+# ── Conectar Nodos ────────────────────────────────────────────────────────────
+
+# Characters to strip from word boundaries when tokenising body text
+_STRIP_CHARS = ' \t\n\r.,;:!?()[]{}"\'-–—#*_`~^<>/\\|@'
+
+# Words to always ignore regardless of length (Spanish + English stop-words)
+_STOP_WORDS: set[str] = {
+    "de", "la", "el", "en", "un", "es", "se", "no", "si", "lo",
+    "que", "los", "las", "del", "una", "por", "con", "para", "pero",
+    "como", "más", "este", "esta", "esto", "son", "the", "and", "for",
+    "are", "was", "with", "that", "this", "from", "have", "not", "also",
+}
+
+
+def tokenise_body(text: str, min_len: int = 4) -> set[str]:
+    """Return a set of lowercase words from *text* that meet min_len and
+    are not stop-words, and are not already wikilinks."""
+    words: set[str] = set()
+    for raw in text.split():
+        word = raw.strip(_STRIP_CHARS).lower()
+        # Skip wikilinks, empty, short, numeric, stop-words
+        if (
+            not word
+            or len(word) < min_len
+            or word.isdigit()
+            or word in _STOP_WORDS
+            or word.startswith("[[")
+        ):
+            continue
+        words.add(word)
+    return words
+
+
+def find_common_words(left_body: str, right_body: str, min_len: int = 4) -> set[str]:
+    """Words that appear in both bodies and are not already wikilinks there."""
+    left_words  = tokenise_body(left_body,  min_len)
+    right_words = tokenise_body(right_body, min_len)
+    return left_words & right_words
+
+
+def apply_wikilinks_to_body(body: str, words: list[str]) -> str:
+    """Replace standalone occurrences of each word in *words* with [[word]]
+    in *body*.  Case-insensitive match, preserves surrounding punctuation.
+    """
+    import re
+    result = body
+    for word in words:
+        # Only replace plain occurrences (not already inside [[...]])
+        pattern = re.compile(
+            r'(?<!\[)(?<!\w)' + re.escape(word) + r'(?!\w)(?!\])',
+            re.IGNORECASE,
+        )
+        result = pattern.sub(f"[[{word}]]", result)
+    return result

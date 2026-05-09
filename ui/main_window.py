@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from core.utils import merge_body
+from core.utils import merge_body, find_common_words, apply_wikilinks_to_body
 from core.yaml_parser import serialize_frontmatter
 from ui.props_panel import PropsPanel
 from ui.dialogs import BodyCopyDialog, TemplateSaveDialog
@@ -145,6 +145,26 @@ class MainWindow(QMainWindow):
         dst_panel.body_edit.setPlainText(new_content)
         dst_panel.note.set_body(new_content)
         self.statusBar().showMessage("Cuerpo copiado.")
+
+    # ── Conectar Nodos ────────────────────────────────────────────────────
+
+    def find_common_words(self, min_len: int) -> set[str]:
+        """Called by BodyEditor.search_btn. Returns words common to both bodies."""
+        left_body  = self.left_panel.body_edit.toPlainText()
+        right_body = self.right_panel.body_edit.toPlainText()
+        return find_common_words(left_body, right_body, min_len)
+
+    def apply_node_connections(self, words: list[str]):
+        """Replace selected words with [[word]] in both panel bodies."""
+        for panel in (self.left_panel, self.right_panel):
+            current = panel.body_edit.toPlainText()
+            updated = apply_wikilinks_to_body(current, words)
+            if updated != current:
+                panel.body_edit.setPlainText(updated)
+                panel.note.set_body(updated)
+        self.statusBar().showMessage(
+            f"🔗 Conectar Nodos: {len(words)} palabra(s) convertida(s) a WikiLink en ambos paneles."
+        )
 
     # ── Template ──────────────────────────────────────────────────────────
 

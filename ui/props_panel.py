@@ -20,6 +20,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 
+from ui.body_editor import BodyEditor
+
 from core.models import NoteFile
 from core.utils import now_timestamp, is_empty_value, convert_value_to_wikilink
 from ui.prop_row import (
@@ -180,14 +182,10 @@ class PropsPanel(QWidget):
         return self.scroll
 
     def _build_body_tab(self) -> QWidget:
-        tab = QWidget()
-        tl = QVBoxLayout(tab)
-        tl.setContentsMargins(6, 6, 6, 6)
-        self.body_edit = QTextEdit()
-        self.body_edit.setObjectName("BodyEdit")
-        self.body_edit.setPlaceholderText("Cuerpo de la nota…")
-        tl.addWidget(self.body_edit)
-        return tab
+        self._body_editor_widget = BodyEditor(self.side, self)
+        # Expose body_edit as inner QTextEdit so all existing code keeps working
+        self.body_edit = self._body_editor_widget.editor
+        return self._body_editor_widget
 
     # ── File I/O ──────────────────────────────────────────────────────────
 

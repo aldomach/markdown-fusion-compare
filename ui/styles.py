@@ -200,4 +200,35 @@ QDialogButtonBox QPushButton {
     border-radius: 4px; padding: 4px 14px; color: #cdd6f4;
 }
 QDialogButtonBox QPushButton:hover { background: #45475a; }
+
+/* ── Conectar Nodos ── */
+QFrame#NodosContainer  { background: #1e1e2e; }
+QFrame#NodosPanelInner {
+    background: #181825; border: 1px solid #313244;
+    border-radius: 4px; padding: 4px;
+}
+QPushButton#NodosToggleBtn {
+    background: #1a2535; border: 1px solid #3a5a8a;
+    border-radius: 4px; padding: 2px 12px; color: #89dceb; font-size: 12px;
+}
+QPushButton#NodosToggleBtn:hover { background: #243550; }
+QPushButton#NodosSearchBtn {
+    background: #1f2d3d; border: 1px solid #3d6a8a;
+    border-radius: 4px; padding: 2px 12px; color: #89dceb;
+}
+QPushButton#NodosSearchBtn:hover { background: #2a3d50; }
+QPushButton#NodosApplyBtn {
+    background: #1a2d1a; border: 1px solid #3a7a3a;
+    border-radius: 4px; padding: 3px 12px; color: #a6e3a1;
+}
+QPushButton#NodosApplyBtn:hover { background: #253d25; }
+QListWidget#NodosWordList {
+    background: #181825; border: 1px solid #313244;
+    border-radius: 4px; color: #cdd6f4; font-size: 12px;
+}
+QListWidget#NodosWordList::item:hover { background: #24243e; }
+QSpinBox {
+    background: #313244; border: 1px solid #45475a;
+    border-radius: 4px; padding: 2px 6px; color: #cdd6f4;
+}
 """
