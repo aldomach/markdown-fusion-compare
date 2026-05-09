@@ -35,37 +35,58 @@ if TYPE_CHECKING:
 
 def md_to_html(text: str) -> str:
     """Convert a markdown string to an HTML fragment."""
-    lines   = text.split("\n")
-    out     = []
-    in_code = False
+    lines      = text.split("\n")
+    out        = []
+    in_code    = False
     in_list_ul = False
     in_list_ol = False
     in_blockquote = False
+    in_table   = False
+    table_buf: list[str] = []
 
     def close_lists():
         nonlocal in_list_ul, in_list_ol
-        if in_list_ul:
-            out.append("</ul>")
-            in_list_ul = False
-        if in_list_ol:
-            out.append("</ol>")
-            in_list_ol = False
+        if in_list_ul:  out.append("</ul>");  in_list_ul = False
+        if in_list_ol:  out.append("</ol>");  in_list_ol = False
 
     def close_blockquote():
         nonlocal in_blockquote
-        if in_blockquote:
-            out.append("</blockquote>")
-            in_blockquote = False
+        if in_blockquote: out.append("</blockquote>"); in_blockquote = False
+
+    def flush_table():
+        nonlocal in_table, table_buf
+        if not table_buf:
+            in_table = False
+            return
+        out.append('<table>')
+        header_done = False
+        for row in table_buf:
+            # Skip pure separator rows (---|---|---)
+            if re.match(r'^[\|\s\-:]+$', row):
+                if not header_done:
+                    out.append('</thead><tbody>')
+                    header_done = True
+                continue
+            cells = [c.strip() for c in row.strip().strip('|').split('|')]
+            tag = 'th' if not header_done else 'td'
+            out.append('<tr>' + ''.join(f'<{tag}>{_inline(c)}</{tag}>' for c in cells) + '</tr>')
+            if not header_done:
+                out.append('<thead>')
+        if not header_done:
+            out.append('</thead>')
+        out.append('</tbody></table>')
+        table_buf = []
+        in_table  = False
 
     for line in lines:
-        # ── Code fence
+        # ── Code fence ───────────────────────────────────────────────────
         if line.strip().startswith("```"):
+            flush_table()
             if in_code:
                 out.append("</code></pre>")
                 in_code = False
             else:
-                close_lists()
-                close_blockquote()
+                close_lists(); close_blockquote()
                 out.append('<pre><code>')
                 in_code = True
             continue
@@ -74,71 +95,72 @@ def md_to_html(text: str) -> str:
             out.append(_esc(line))
             continue
 
-        # ── Headings
+        # ── Table row (contains |) ────────────────────────────────────────
+        if '|' in line and re.match(r'^\s*\|', line.strip() + '|') or \
+           (re.search(r'\|', line) and re.match(r'^.*\|.*$', line)):
+            # Heuristic: line has at least one | and is likely a table row
+            if re.search(r'\|', line):
+                close_lists(); close_blockquote()
+                in_table = True
+                table_buf.append(line)
+                continue
+
+        # ── Flush table if we hit a non-table line ────────────────────────
+        if in_table:
+            flush_table()
+
+        # ── Headings ─────────────────────────────────────────────────────
         hm = re.match(r'^(#{1,4})\s+(.*)', line)
         if hm:
-            close_lists()
-            close_blockquote()
+            close_lists(); close_blockquote()
             level = len(hm.group(1))
             out.append(f"<h{level}>{_inline(hm.group(2))}</h{level}>")
             continue
 
-        # ── Horizontal rule
+        # ── Horizontal rule ───────────────────────────────────────────────
         if re.match(r'^[-*_]{3,}\s*$', line):
-            close_lists()
-            close_blockquote()
+            close_lists(); close_blockquote()
             out.append("<hr/>")
             continue
 
-        # ── Blockquote
+        # ── Blockquote ────────────────────────────────────────────────────
         bq = re.match(r'^>\s?(.*)', line)
         if bq:
             close_lists()
             if not in_blockquote:
-                out.append("<blockquote>")
-                in_blockquote = True
+                out.append("<blockquote>"); in_blockquote = True
             out.append(f"<p>{_inline(bq.group(1))}</p>")
             continue
         else:
             close_blockquote()
 
-        # ── Unordered list
+        # ── Unordered list ────────────────────────────────────────────────
         ul = re.match(r'^[\-\*\+]\s+(.*)', line)
         if ul:
-            if in_list_ol:
-                out.append("</ol>")
-                in_list_ol = False
-            if not in_list_ul:
-                out.append("<ul>")
-                in_list_ul = True
+            if in_list_ol: out.append("</ol>"); in_list_ol = False
+            if not in_list_ul: out.append("<ul>"); in_list_ul = True
             out.append(f"<li>{_inline(ul.group(1))}</li>")
             continue
 
-        # ── Ordered list
+        # ── Ordered list ─────────────────────────────────────────────────
         ol = re.match(r'^\d+\.\s+(.*)', line)
         if ol:
-            if in_list_ul:
-                out.append("</ul>")
-                in_list_ul = False
-            if not in_list_ol:
-                out.append("<ol>")
-                in_list_ol = True
+            if in_list_ul: out.append("</ul>"); in_list_ul = False
+            if not in_list_ol: out.append("<ol>"); in_list_ol = True
             out.append(f"<li>{_inline(ol.group(1))}</li>")
             continue
 
-        # ── Close open lists on non-list line
         close_lists()
 
-        # ── Blank line → paragraph break
         if not line.strip():
             out.append("<br/>")
             continue
 
-        # ── Normal paragraph line
         out.append(f"<p>{_inline(line)}</p>")
 
     close_lists()
     close_blockquote()
+    flush_table()
     if in_code:
         out.append("</code></pre>")
 
@@ -222,7 +244,12 @@ _HTML_TEMPLATE = """
   code  {{ font-family:'JetBrains Mono',monospace; }}
   blockquote {{ border-left:3px solid #585b70; margin:4px 0;
                 padding-left:12px; color:#a6adc8; }}
-  a     {{ color:#89b4fa; text-decoration:none; }}
+  table {{ border-collapse:collapse; width:100%; margin:8px 0; }}
+  th    {{ background:#313244; color:#89b4fa; border:1px solid #45475a;
+           padding:6px 10px; text-align:left; }}
+  td    {{ background:#1e1e2e; border:1px solid #313244;
+           padding:5px 10px; color:#cdd6f4; }}
+  tr:nth-child(even) td {{ background:#24243e; }}
   del   {{ color:#6c7086; }}
 </style></head><body>{body}</body></html>
 """
@@ -264,7 +291,15 @@ class MarkdownView(QWidget):
         root.addWidget(self.view)
 
     def refresh(self):
-        """Re-render body from the model."""
-        body = self._panel.body_edit.toPlainText()
+        """Re-render body from the panel model."""
+        from ui.props_panel import PropsPanel
+        if isinstance(self._panel, PropsPanel):
+            body = self._panel.body_edit.toPlainText()
+        else:
+            body = ""
+        self.refresh_from_text(body)
+
+    def refresh_from_text(self, body: str):
+        """Re-render from a body string directly (used by BodyEditor)."""
         html = _HTML_TEMPLATE.format(body=md_to_html(body))
         self.view.setHtml(html)

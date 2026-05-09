@@ -1,256 +1,100 @@
-# Changelog
+# Changelog — Obsidian Markdown Comparator
 
-## [0.0.7] - 2026-05-09
+## [0.6.0] — Refactor modular + motor de nodos
+### Nuevas funciones
+- **Diccionario de Nodos** (`core/node_dict.py`): persistencia en `data/nodes.json` y `data/blacklist.json`
+- Detección de frases **multi-palabra** (2–4 tokens) comunes entre ambos cuerpos
+- Lista negra de palabras/frases que nunca se convierten a WikiLink
+- Diálogo **📚 Diccionario** para gestionar nodos y lista negra (mover entre listas, limpiar)
+- Menú contextual por ítem en la lista de Conectar Nodos: aceptar → dict, ignorar → blacklist
+- Botón "💾 Guardar en diccionario" en el panel Conectar Nodos
+- Stop-words en español e inglés con toggle "Ignorar conectores"
 
-### Added
-- **`core/node_dict.py` — NodeDictionary**: sistema persistente de diccionario de nodos
-  - Almacena nodos aceptados y lista negra en `data/nodes.json` y `data/blacklist.json`
-  - Soporta nodos de una o múltiples palabras
-  - `find_candidates()`: búsqueda priorizada en tres niveles:
-    1. Entradas del diccionario presentes en ambos cuerpos (color púrpura)
-    2. Frases de 2–4 palabras en común (color cyan)
-    3. Palabras individuales en común (color neutro)
-  - `apply_nodes_to_body()`: reemplaza frases largas antes que cortas para evitar solapamientos
-  - Stop-words expandidas (español + inglés) en `STOP_WORDS_ES` / `STOP_WORDS_EN`
-  - Instancia global compartida `get_node_dict()` en `body_editor.py`
+### Mejoras
+- `apply_node_connections` reemplaza frases largas antes que palabras cortas (evita `[[[[Juan]]]] Carlos]]`)
+- Resultados de búsqueda agrupados y color-codificados: 🟣 diccionario, 🔵 frases, ⚪ palabras
 
-- **`ui/node_dict_dialog.py` — NodeDictDialog**: diálogo modal para gestionar el diccionario
-  - Pestaña "📚 Diccionario": agregar, eliminar, mover a lista negra, limpiar todo
-  - Pestaña "🚫 Lista negra": agregar, eliminar, mover al diccionario, limpiar todo
-  - Accesible desde el botón "📚 Diccionario" en la barra de Conectar Nodos
+---
 
-- **`ui/highlighter.py` — MdHighlighter**: highlighter compartido extraído a su propio módulo
-  - Parámetro `body_only`: modo cuerpo (sin detección de frontmatter YAML)
-  - Soporta: delimitadores YAML, claves/valores, listas, encabezados Markdown,
-    WikiLinks, links Markdown, código inline, negrita, cursiva, blockquotes, tags `#`, HR
-  - Usado por `BodyEditor` (body_only=True) y `SourceView` (full file)
+## [0.5.0] — Editor unificado + Buscar y Reemplazar
+### Nuevas funciones
+- **Modo de vista unificado** en el tab Cuerpo: botones 📝 Cuerpo / 🗒 Fuente / 👁 Markdown (reemplaza tres tabs separados)
+- Modo **Fuente**: muestra YAML + cuerpo completo con syntax highlighting
+- Modo **Markdown**: render HTML con soporte de tablas, headings, bold, italic, WikiLinks, listas, blockquotes, código
+- **¶ Pilcrow**: botón para mostrar/ocultar caracteres invisibles (tabs, espacios, saltos de línea)
+- **🔍 Buscar y Reemplazar** (`ui/find_replace_dialog.py`): no-modal, modos Normal / Extendido / Regex, opciones mayúsculas y palabra completa, scope todo el doc o solo selección
+- **≡ Líneas**: menú con operaciones — eliminar duplicadas, eliminar duplicadas consecutivas, ordenar A→Z / Z→A (todas o selección)
 
-- **`ui/markdown_view.py` — MarkdownView**: nueva pestaña "Markdown" en cada panel
-  - Renderizado HTML de solo lectura sin dependencias externas (regex propio)
-  - Soporta: H1–H4, negrita, cursiva, tachado, código inline, bloques de código,
-    listas ordenadas/desordenadas, blockquotes, WikiLinks (pill coloreado),
-    links Markdown, HR, saltos de párrafo
-  - Se refresca automáticamente al seleccionar la pestaña o manualmente con "🔄 Actualizar"
+### Correcciones
+- Fix `AttributeError: 'body_edit'` al activar modo Markdown desde BodyEditor
+- Fix tablas Markdown no renderizadas (`| col |` → `<table>`)
+- Fix `setOpenExternalLinks` en QTextEdit (reemplazado por QTextBrowser)
 
-- **Conectar Nodos — mejoras**:
-  - Checkbox "Ignorar conectores" para activar/desactivar el filtro de stop-words
-  - Resultados agrupados en secciones: "Del diccionario", "Frases en común", "Palabras en común"
-  - Menú contextual por ítem: "✔ Aceptar → guardar en diccionario" / "🚫 Ignorar → agregar a lista negra" / "🔗 Convertir a WikiLink en ambos ahora"
-  - Botón "💾 Guardar en diccionario" para guardar los ítems seleccionados
-  - Botón "📚 Diccionario" en la barra toggle para abrir `NodeDictDialog`
+---
 
-- **Zebra striping en filas de propiedades**: filas pares/impares con fondo levemente distinto
-  dentro de cada grupo de color de estado
-- `PropRow` recibe `row_index` para el zebra striping; `set_status()` acepta `row_index` opcional
+## [0.4.0] — Comparación visual + Fuente + Conectar Nodos
+### Nuevas funciones
+- **Colores de estado** por fila de propiedad (7 estados): igual 🟢, diferente 🟡, WikiLink-diff 🔵, lista parcial 🟣, solo izquierda 🔴, solo derecha 💙, vacío ⚫
+- **Zebra striping**: filas alternadas dentro de cada grupo de estado
+- **Tooltip enriquecido**: muestra valor del panel actual Y del panel opuesto al pasar el mouse
+- **Clic derecho en toda la fila** abre el menú contextual (no solo el botón ···)
+- **🔗 Conectar Nodos**: busca palabras en común entre ambos cuerpos, lista checkeable, convierte a WikiLink en ambos paneles
+- **Tab Fuente**: editor de texto plano con syntax highlighting YAML+Markdown, botón Aplicar
+- **Clic derecho en cuerpo**: copiar selección al otro panel en 3 posiciones (cursor / principio / final)
+- **Barra de búsqueda** en el panel de propiedades: buscar en cuerpo, agregar como propiedad, agregar a tags
+- Módulo `core/compare.py` con lógica pura de comparación
+- Módulo `ui/highlighter.py` compartido entre Fuente y Cuerpo
 
-### Changed
-- `PropRow`: colores de fila aplicados vía `setStyleSheet` directo en lugar de
-  `objectName` + QSS global (más confiable entre plataformas)
-- `_STATUS_META` ampliado con `bg_even` / `bg_odd` / `border_colour` por estado
-- `_set_active_style()` reemplazado por `_apply_style(active=bool)` unificado
-- `SourceView` importado en forma lazy dentro de `_build_ui()` para evitar imports circulares
-- `_sync_source_view()`: el tab Fuente se mantiene sincronizado en background
-  al modificar propiedades (sin cambiar de pestaña)
-- `_on_tab_changed()` actualiza tanto Fuente como la nueva pestaña Markdown
-- `apply_node_connections()` en `MainWindow` usa `NodeDictionary.apply_nodes_to_body()`
-  (reemplaza a largo primero) en lugar de `apply_wikilinks_to_body()`
-- `find_common_words()` en `MainWindow` marcado como legacy (supersedido por `NodeDictionary`)
-- `main.py`: agrega `sys.path.insert(0, ...)` para garantizar imports desde el directorio raíz
+### Mejoras
+- Botones ✎ y ··· movidos al lado izquierdo de cada fila
 
-### Removed
-- QSS de `RowContainer`, `RowContainerActive`, `RowContainerUnpaired` eliminado de
-  `styles.py` (reemplazado por `setStyleSheet` inline en `PropRow`)
-- `_MdHighlighter` privado de `source_view.py` eliminado (reemplazado por `MdHighlighter` compartido)
+---
 
+## [0.3.0] — Refactor modular
+### Arquitectura
+- Proyecto separado en módulos: `core/` (lógica pura) y `ui/` (widgets)
+- `core/yaml_parser.py` — parseo y serialización de frontmatter
+- `core/utils.py` — WikiLinks, timestamps, merge de cuerpo
+- `core/models.py` — `NoteFile` con historial de undo (hasta 50 pasos)
+- `ui/styles.py` — todo el QSS en un solo archivo (paleta Catppuccin Mocha)
+- `ui/prop_row.py` — fila de propiedad individual
+- `ui/props_panel.py` — panel completo con bulk bar y scroll
+- `ui/dialogs.py` — diálogos de cuerpo y plantilla
+- `ui/main_window.py` — ventana principal
 
-## [0.0.6] - 2026-05-09
+### Nuevas funciones
+- **↩ Deshacer** por panel (hasta 50 pasos)
+- **Nuevo archivo** en blanco editable, se guarda solo cuando el usuario decide
+- **Checkbox `updated`**: agrega/actualiza la propiedad `updated: YYYY-MM-DDTHH:MM` al guardar
+- **Auto-comparar** al abrir el segundo archivo
+- **Edición inline** de propiedades (doble clic o botón ✎), soporta renombrar clave y editar valor
+- **Resaltado de fila** al abrir el menú ···
+- **Acciones en lote** con combo desplegable (mismas opciones que menú ···)
+- **Opción "Copiar vacía"** en menú y en lote
+- **Eliminar propiedad** desde el menú ··· y en lote
 
-### Added
-- **Barra de búsqueda / extracción** encima de la lista de propiedades:
-  - Campo de texto con placeholder "Buscar en cuerpo / agregar propiedad…"
-  - Botón "🔍" busca el término en el cuerpo, cambia a la pestaña Cuerpo
-    y posiciona el cursor en la primera coincidencia
-  - Botón "+ Agregar como propiedad" crea una nueva clave YAML vacía con el texto del campo
-  - Botón "+ Agregar a tags" agrega el texto como ítem de lista en la propiedad `tags`
-- **Tooltip enriquecido por fila**: al pasar el cursor sobre cualquier parte de una fila
-  se muestra el valor del panel propio y del panel opuesto (HTML con `<b>Izquierdo/Derecho</b>`)
-- **Clic derecho en cualquier parte de la fila** abre el menú contextual
-  (antes solo funcionaba en el botón `···`)
-- Pestaña **Fuente** integrada en `PropsPanel` (conectada desde `props_panel.py`,
-  se refresca automáticamente al seleccionarla sincronizando el cuerpo desde el editor)
+### Correcciones
+- Toolbar eliminada (duplicaba botones de los paneles)
+- BottomBar compacta (altura fija 42px)
 
-### Changed
-- **Botones ✎ y `···` movidos a la izquierda** del dot de estado y la clave,
-  para que las acciones sean accesibles sin llegar al extremo derecho de la fila
-- `rebuild_rows()` ahora recibe `other_props: dict` en lugar de `other_keys: set`,
-  pasa los valores al lado opuesto para el tooltip y el estado de comparación
-- `_insert_row()` recibe `status` y `other_val` y los aplica al `PropRow` inmediatamente
-- `PropRow.set_other_value(other_value)`: nuevo método para inyectar el valor opuesto
-  y reconstruir el tooltip
-- `PropRow.refresh()` y `refresh_key()` actualizan el tooltip automáticamente
-- `PropRow._update_tooltip()`: construye el tooltip HTML combinado y lo aplica
-  al frame, `val_lbl` y `key_lbl`
-- `_recompare()` en `MainWindow` pasa los dicts completos (`other_props`) en lugar
-  de solo los conjuntos de claves
-- `PropsPanel` añade `_status_map: dict[str, str]` para persistir el estado de
-  comparación entre rebuilds
+---
 
-### Fixed
-- Al cerrar el menú contextual, el highlight activo restaura el color del estado
-  de comparación correctamente en todos los casos (no solo `RowContainerUnpaired`)
-- `PropRow.refresh()`: eliminado `setToolTip` redundante sobre `val_lbl`
-  (el tooltip ahora vive en el frame completo)
+## [0.2.0] — Funciones principales
+### Nuevas funciones
+- Dos paneles verticales con propiedades YAML ordenadas alfabéticamente
+- Propiedades sin par marcadas con borde rojo
+- Menú contextual ··· con: copiar →/←, agregar como lista, copiar como WikiLink, convertir a WikiLink
+- Conversión a WikiLink en lote para propiedades seleccionadas
+- Copia bidireccional del cuerpo de la nota con deduplicación de líneas
+- Selector inicio/final al copiar cuerpo
+- **Guardar como plantilla**: genera `.md` con propiedades seleccionadas (con valor o vacías)
+- Tab separado para editar el cuerpo de cada nota
+- Barra inferior compacta con acciones globales
 
-## [0.0.5] - 2026-05-09
+---
 
-### Added
-- **Sistema de comparación semántica de propiedades** (`core/compare.py`):
-  nuevo módulo puro con 7 estados de comparación por propiedad:
-  - `equal` — valores idénticos en ambos paneles
-  - `diff` — ambos existen pero con valores distintos
-  - `wiki_diff` — mismo texto pero uno es WikiLink y el otro no
-  - `list_partial` — listas con ítems parcialmente coincidentes
-  - `left_only` — clave solo en el panel izquierdo
-  - `right_only` — clave solo en el panel derecho
-  - `empty_diff` — uno o ambos lados están vacíos
-- **Dot de estado por fila**: cada `PropRow` muestra un círculo "●" coloreado
-  con tooltip explicativo según el estado de comparación
-- **Colores de fondo por estado** en `ui/styles.py`: cada estado tiene su propio
-  `QFrame#Row<Status>` con color de borde izquierdo y fondo diferenciado (Catppuccin)
-- **Vista Fuente** (`ui/source_view.py`): nueva pestaña "Fuente" en cada panel
-  con editor de texto completo del archivo (YAML + cuerpo):
-  - Syntax highlighting propio (`_MdHighlighter`): claves YAML, valores, listas,
-    encabezados Markdown, WikiLinks y negrita
-  - Botón "✔ Aplicar cambios" re-parsea el contenido y actualiza el modelo y los paneles
-  - Se recarga automáticamente al cambiar a esta pestaña
-
-### Changed
-- `PropRow.set_status(status)`: nuevo método público para aplicar el estado de
-  comparación desde `PropsPanel.rebuild_rows()`
-- `PropRow._set_active_style()`: al cerrar el menú contextual restaura el color
-  del estado de comparación en lugar del color base genérico
-- `PropRow._apply_container_name()`: reemplaza `_set_base_style()`, reutilizado
-  por `set_status()` y el highlight activo
-- Menú contextual de `PropRow`: refactorizado con función `add()` local, más legible
-- `ui/styles.py`: QSS ampliado con estilos para `SearchBar`, `SearchEdit`,
-  `SourceEdit`, `SourceApplyBtn`, `SourceInfoLabel` y la leyenda de dots de estado
-
-## [0.0.4] - 2026-05-09
-
-### Added
-- **Conectar Nodos**: nueva funcionalidad para enlazar palabras en común entre ambos cuerpos
-  - Busca palabras que aparecen en los dos paneles, filtrando stop-words (español + inglés)
-    y palabras ya convertidas a WikiLink
-  - Spinner de longitud mínima (default: 4 caracteres, rango: 2–50)
-  - Lista de resultados con checkboxes para selección granular
-  - Botón "Sel. todo" para marcar todas las coincidencias
-  - Botón "🔗 Convertir seleccionadas a WikiLink en ambos paneles" aplica el reemplazo
-    en ambos cuerpos simultáneamente (case-insensitive, respeta puntuación circundante)
-  - Panel colapsable con botón toggle "🔗 Conectar Nodos ▸/▾" en cada pestaña Cuerpo
-- **Copiar selección al otro panel**: menú contextual en el editor de cuerpo
-  (clic derecho sobre texto seleccionado) con opción "→/← Copiar selección al panel derecho/izquierdo"
-  — agrega el fragmento al final del panel destino si no existe ya
-- Nuevo archivo `ui/body_editor.py`: widget `BodyEditor` que encapsula el editor de
-  texto + panel Conectar Nodos; `PropsPanel.body_edit` sigue apuntando al `QTextEdit` interno
-  para compatibilidad con el resto del código
-
-### Changed
-- `PropsPanel._build_body_tab()` ahora devuelve un `BodyEditor` en lugar de un `QWidget` plano
-- `MainWindow` expone `find_common_words(min_len)` y `apply_node_connections(words)`
-  como métodos públicos (llamados desde `BodyEditor`)
-
-### Added (core)
-- `core/utils.py`: funciones `tokenise_body`, `find_common_words`, `apply_wikilinks_to_body`
-- `_STOP_WO
-
-## [0.0.3] - 2026-05-09
-
-### Changed (breaking)
-- Proyecto refactorizado a arquitectura modular: el monolito `obsidian_compare_0.0.2.py`
-  fue reemplazado por paquetes separados `core/` y `ui/`, con `main.py` como entry point
-
-### Structure
-markdown-fusion-compare/
-├── core/
-│   ├── init.py
-│   ├── models.py        # NoteFile: modelo de datos con historial de undo
-│   ├── utils.py         # Helpers puros: wikilinks, body merge, timestamps
-│   └── yaml_parser.py   # Parser/serializer de frontmatter YAML
-├── ui/
-│   ├── init.py
-│   ├── dialogs.py       # BodyCopyDialog, TemplateSaveDialog
-│   ├── main_window.py   # MainWindow
-│   ├── prop_row.py      # PropRow widget con edición inline
-│   ├── props_panel.py   # PropsPanel con NoteFile integrado
-│   └── styles.py        # QSS Catppuccin Mocha (centralizado)
-└── main.py
-
-### Added
-- `NoteFile` (core/models.py): modelo de datos con pila de undo (hasta 50 estados),
-  flag `dirty`, y métodos `rename_prop`, `set_prop_empty`, `convert_prop_to_wikilink`
-- Undo por panel: botón "↩ Deshacer" en el header de cada panel
-- Edición inline de propiedades: botón "✎" y doble clic en el valor
-- Renombrado de clave desde la edición inline
-- Nuevo botón "Nuevo" para crear un archivo en blanco sin abrir el selector
-- Auto-comparación al cargar ambos archivos (señal `file_loaded`)
-- Acción "→ Copiar vacía a otro panel" en el menú contextual y en bulk
-- Bulk bar rediseñada: combo desplegable con todas las acciones + botón "Aplicar"
-- Checkbox "updated" en la bulk bar: al guardar, escribe la timestamp actual en la
-  propiedad `updated` del frontmatter
-- Resaltado de fila activa (`RowContainerActive`) mientras el menú contextual está abierto
-- `merge_body` y `new_lines_preview` extraídos a `core/utils.py`
-- `now_timestamp()` en `core/utils.py` para timestamps compatibles con Obsidian
-- QSS centralizado en `ui/styles.py`, aplicado a `QApplication` en lugar de `MainWindow`
-- `display_value` y `value_to_str` extraídos a `core/utils.py`
-
-### Removed
-- `obsidian_compare_0.0.2.py` (monolito)
-- QToolBar eliminada de `MainWindow` (las acciones viven en los paneles y la bottom bar)
-
-## [0.0.2] - 2026-05-09
-
-### Added
-- Opción "🗑 Eliminar propiedad" en el menú contextual de cada fila de propiedades
-- Botón "🗑 Eliminar sel." en la bulk bar para eliminar múltiples propiedades seleccionadas
-- Botón "→ Copiar sel." en la bulk bar para copiar propiedades seleccionadas al panel opuesto
-- Función helper `is_empty_value()` para detectar valores vacíos en strings y listas
-
-### Changed
-- `TemplateSaveDialog` refactorizado para usar `QTableWidget` en lugar de lista simple
-- Menú contextual: "Convertir a WikiLink" ahora se oculta si el valor es vacío (usa `is_empty_value`)
-- Parámetro `paired_key_exists` renombrado a `paired` en `PropRow`
-- Compactación de `_show_menu`: sintaxis más concisa al agregar acciones al menú
-
-### Removed
-- Imports no utilizados eliminados: `re`, `QTimer`, `QMimeData`, `QFont`, `QColor`, `QPalette`,
-  `QSyntaxHighlighter`, `QTextCharFormat`, `QFontDatabase`, `QKeySequence`, `QStatusBar`,
-  `QGroupBox`, `QLineEdit`, `QIcon`
-
-### Fixed
-- Parser YAML: eliminado chequeo redundante `or val is None` en detección de valores vacíos
-
-## [0.0.1] - 2026-05-08
-
-### Prompt
-Ver: `prompts/markdown-fusion-compare-0.0.1.md`
-
-### Added
-- Interfaz principal con dos paneles verticales redimensionables (splitter)
-- Parser YAML propio para frontmatter de Obsidian (strings, listas, listas anidadas)
-- Visualización de propiedades ordenadas alfabéticamente con alineación visual entre paneles
-- Resaltado de propiedades sin par en el archivo opuesto (borde rojo)
-- Menú contextual por propiedad con opciones: copiar, agregar como ítem de lista, copiar como WikiLink, convertir a WikiLink
-- Conversión por lote a WikiLink mediante checkboxes y botón dedicado
-- Checkbox "Todo" para seleccionar/deseleccionar todas las propiedades
-- Pestaña "Cuerpo" con editor de texto completo por panel
-- Copia de cuerpo bidireccional con elección de posición (principio/final)
-- Deduplicación automática de líneas al copiar el cuerpo
-- Vista previa de líneas nuevas antes de confirmar la copia del cuerpo
-- Edición directa en cualquier panel sin salir de la app
-- Botón "Volver a comparar" para refrescar la vista tras edición manual
-- Guardado en memoria (no escribe en disco hasta confirmar)
-- Diálogo para guardar plantilla `.md` con propiedades en blanco y selección granular
-- Soporte de argumentos CLI para abrir dos archivos al lanzar la app
-- Barra de herramientas con acciones rápidas de apertura, guardado y comparación
-- Barra de estado con mensajes de feedback por cada acción
-- Tema visual oscuro completo basado en Catppuccin Mocha
+## [0.1.0] — Versión inicial
+- Comparador básico de dos archivos Markdown con frontmatter YAML
+- Parseo y serialización de propiedades (strings y listas)
+- Apertura y guardado de archivos
+- Interfaz PySide6 con tema oscuro
