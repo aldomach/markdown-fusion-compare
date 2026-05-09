@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.2] - 2026-05-09
+
+### Added
+- Opción "🗑 Eliminar propiedad" en el menú contextual de cada fila de propiedades
+- Botón "🗑 Eliminar sel." en la bulk bar para eliminar múltiples propiedades seleccionadas
+- Botón "→ Copiar sel." en la bulk bar para copiar propiedades seleccionadas al panel opuesto
+- Función helper `is_empty_value()` para detectar valores vacíos en strings y listas
+
+### Changed
+- `TemplateSaveDialog` refactorizado para usar `QTableWidget` en lugar de lista simple
+- Menú contextual: "Convertir a WikiLink" ahora se oculta si el valor es vacío (usa `is_empty_value`)
+- Parámetro `paired_key_exists` renombrado a `paired` en `PropRow`
+- Compactación de `_show_menu`: sintaxis más concisa al agregar acciones al menú
+
+### Removed
+- Imports no utilizados eliminados: `re`, `QTimer`, `QMimeData`, `QFont`, `QColor`, `QPalette`,
+  `QSyntaxHighlighter`, `QTextCharFormat`, `QFontDatabase`, `QKeySequence`, `QStatusBar`,
+  `QGroupBox`, `QLineEdit`, `QIcon`
+
+### Fixed
+- Parser YAML: eliminado chequeo redundante `or val is None` en detección de valores vacíos
+
 ## [0.0.1] - 2026-05-08
 
 ### Prompt
