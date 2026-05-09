@@ -1,6 +1,33 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+
+## [0.0.4] - 2026-05-09
+
+### Added
+- **Conectar Nodos**: nueva funcionalidad para enlazar palabras en común entre ambos cuerpos
+  - Busca palabras que aparecen en los dos paneles, filtrando stop-words (español + inglés)
+    y palabras ya convertidas a WikiLink
+  - Spinner de longitud mínima (default: 4 caracteres, rango: 2–50)
+  - Lista de resultados con checkboxes para selección granular
+  - Botón "Sel. todo" para marcar todas las coincidencias
+  - Botón "🔗 Convertir seleccionadas a WikiLink en ambos paneles" aplica el reemplazo
+    en ambos cuerpos simultáneamente (case-insensitive, respeta puntuación circundante)
+  - Panel colapsable con botón toggle "🔗 Conectar Nodos ▸/▾" en cada pestaña Cuerpo
+- **Copiar selección al otro panel**: menú contextual en el editor de cuerpo
+  (clic derecho sobre texto seleccionado) con opción "→/← Copiar selección al panel derecho/izquierdo"
+  — agrega el fragmento al final del panel destino si no existe ya
+- Nuevo archivo `ui/body_editor.py`: widget `BodyEditor` que encapsula el editor de
+  texto + panel Conectar Nodos; `PropsPanel.body_edit` sigue apuntando al `QTextEdit` interno
+  para compatibilidad con el resto del código
+
+### Changed
+- `PropsPanel._build_body_tab()` ahora devuelve un `BodyEditor` en lugar de un `QWidget` plano
+- `MainWindow` expone `find_common_words(min_len)` y `apply_node_connections(words)`
+  como métodos públicos (llamados desde `BodyEditor`)
+
+### Added (core)
+- `core/utils.py`: funciones `tokenise_body`, `find_common_words`, `apply_wikilinks_to_body`
+- `_STOP_WO
 
 ## [0.0.3] - 2026-05-09
 
