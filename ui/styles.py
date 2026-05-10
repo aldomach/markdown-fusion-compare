@@ -227,6 +227,32 @@ QPushButton#SearchIconBtn {
 }
 QPushButton#SearchIconBtn:hover { background: #45475a; }
 
+/* ── EditorToolbar (reusable declarative toolbar) ── */
+QFrame#EditorToolbar {
+    background: #181825; border-bottom: 1px solid #313244;
+}
+QPushButton#ToolbarBtn {
+    background: #2a2a3e; border: 1px solid #45475a;
+    border-radius: 4px; padding: 2px 8px; color: #a6adc8; font-size: 12px;
+}
+QPushButton#ToolbarBtn:hover   { background: #313244; color: #cdd6f4; }
+QPushButton#ToolbarBtn:checked { background: #313244; border-color: #89b4fa; color: #cdd6f4; }
+
+/* ── Body editor toolbar ── */
+QFrame#BodyToolbar { background: #181825; border-bottom: 1px solid #313244; }
+QPushButton#ModeBtn {
+    background: #2a2a3e; border: 1px solid #45475a;
+    border-radius: 4px; padding: 2px 10px; color: #a6adc8; font-size: 12px;
+}
+QPushButton#ModeBtn:checked  { background: #313244; border-color: #89b4fa; color: #cdd6f4; }
+QPushButton#ModeBtn:hover:!checked { background: #313244; }
+QPushButton#PilcrowBtn {
+    background: #2a2a3e; border: 1px solid #45475a;
+    border-radius: 4px; color: #6c7086; font-size: 14px; font-weight: bold;
+}
+QPushButton#PilcrowBtn:checked { background: #313244; color: #cba6f7; border-color: #cba6f7; }
+QPushButton#PilcrowBtn:hover   { background: #313244; color: #a6adc8; }
+
 /* ── Source view ── */
 QTextEdit#SourceEdit {
     background: #13131f; color: #cdd6f4;
