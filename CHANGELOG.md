@@ -1,5 +1,21 @@
 # Changelog — Obsidian Markdown Comparator
 
+## [0.8.0] — Layout en tabs + WikiLink en editor + Agregar propiedades
+
+### Nuevas funciones
+- **Layout en dos tabs por panel** — "⚙ Propiedades YAML" y "📝 Cuerpo"
+  intercambiables; el editor ocupa el panel completo en su tab
+- **Barra de búsqueda en tab Cuerpo** — búsqueda rápida en el texto
+  sin salir del editor
+- **⟳ Convertir selección a WikiLink** — clic derecho sobre texto
+  seleccionado en el editor convierte la selección a `[[texto]]`
+- **＋ Propiedad** — botón en la bulk bar para agregar nueva propiedad
+  con nombre personalizado vía diálogo
+- **Checkbox "En ambos"** — cuando está activo, agregar propiedad la
+  crea simultáneamente en los dos paneles
+- **Clic derecho en fondo del panel YAML** — menú contextual con opción
+  "＋ Agregar nueva propiedad"
+
 ## [0.7.0] — Editor unificado + Undo corregido + Nodos mejorado
 
 ### Nuevas funciones
