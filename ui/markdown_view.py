@@ -291,7 +291,15 @@ class MarkdownView(QWidget):
         root.addWidget(self.view)
 
     def refresh(self):
-        """Re-render body from the model."""
-        body = self._panel.body_edit.toPlainText()
+        """Re-render body from the panel model."""
+        from ui.props_panel import PropsPanel
+        if isinstance(self._panel, PropsPanel):
+            body = self._panel.body_edit.toPlainText()
+        else:
+            body = ""
+        self.refresh_from_text(body)
+
+    def refresh_from_text(self, body: str):
+        """Re-render from a body string directly (used by BodyEditor)."""
         html = _HTML_TEMPLATE.format(body=md_to_html(body))
         self.view.setHtml(html)
