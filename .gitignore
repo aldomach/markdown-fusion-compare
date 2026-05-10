@@ -1,1 +1,21 @@
+# Archivos compilados de Python
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos temporales
+*.log
+*.pot
+*.tmp
+*.swp
+*.swo
+
+# Entornos virtuales
+.venv/
+env/
+venv/
+ENV/
+
+# Archivos de configuración locales
+*.env
+*.local

@@ -1,5 +1,41 @@
 # Changelog — Obsidian Markdown Comparator
 
+## [0.7.0] — Editor unificado + Undo corregido + Nodos mejorado
+
+### Nuevas funciones
+- **Sincronizar vista** — checkbox en la barra inferior: al cambiar
+  Editar/Markdown en un panel, el otro panel espeja el mismo modo
+- **Checkbox "Mostrar YAML"** en el editor de cuerpo — muestra u oculta
+  el bloque frontmatter en el mismo editor (reemplaza los modos
+  Cuerpo/Fuente separados)
+- **Checkbox "Solo palabras completas"** en Conectar Nodos (activo por
+  defecto) — cada token se valida individualmente por largo mínimo
+- **`EditorToolbar`** (`ui/editor_toolbar.py`) — barra de botones
+  declarativa y reutilizable; agregar un botón nuevo es una línea
+
+### Correcciones
+- **Ctrl+Z / Deshacer** corregido — el QTextEdit interno ya no maneja
+  su propio historial (`setUndoRedoEnabled=False`); todas las operaciones
+  (tipeo, propiedades, Conectar Nodos) pasan por `NoteFile`
+- **Debounce de 800ms** — mientras el usuario tipea, el modelo se
+  actualiza silenciosamente; el punto de undo se registra solo después
+  de una pausa, evitando un punto por cada tecla
+- **Conectar Nodos** — frases como "de la nota" ya no aparecen: `min_len`
+  ahora cuenta caracteres alfanuméricos por token (sin espacios); frases
+  que empiezan o terminan con stop-word son rechazadas
+- **Layout duplicado** eliminado — el editor de cuerpo ya no está
+  envuelto en un QTabWidget adicional; vive directamente bajo el panel
+  de propiedades
+
+### Cambios internos
+- `NoteFile.set_body_silent()` — actualiza el body sin crear punto de undo
+- `NoteFile.checkpoint()` — registra explícitamente un punto de undo
+  (llamado por el debounce timer del editor)
+- `_extract_phrases()` — validación a nivel de token, rechaza frases
+  con stop-words en los extremos
+- `_undo()` en `PropsPanel` delega a `BodyEditor.undo()` para mantener
+  UI y modelo sincronizados
+
 ## [0.6.0] — Refactor modular + motor de nodos
 ### Nuevas funciones
 - **Diccionario de Nodos** (`core/node_dict.py`): persistencia en `data/nodes.json` y `data/blacklist.json`
