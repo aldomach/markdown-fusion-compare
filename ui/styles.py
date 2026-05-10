@@ -227,6 +227,12 @@ QPushButton#SearchIconBtn {
 }
 QPushButton#SearchIconBtn:hover { background: #45475a; }
 
+QPushButton#AddPropBtn {
+    background: #1a2d1a; border: 1px solid #3a7a3a;
+    border-radius: 4px; padding: 2px 9px; color: #a6e3a1; font-size: 11px;
+}
+QPushButton#AddPropBtn:hover { background: #253d25; }
+
 /* ── EditorToolbar (reusable declarative toolbar) ── */
 QFrame#EditorToolbar {
     background: #181825; border-bottom: 1px solid #313244;
