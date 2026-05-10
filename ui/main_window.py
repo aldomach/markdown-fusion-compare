@@ -52,6 +52,14 @@ class MainWindow(QMainWindow):
         self.left_panel.file_loaded.connect(self._on_file_loaded)
         self.right_panel.file_loaded.connect(self._on_file_loaded)
 
+        # Wire mode_changed for sync-view
+        self.left_panel._body_editor_widget.mode_changed.connect(
+            lambda mode: self._on_mode_changed("left", mode)
+        )
+        self.right_panel._body_editor_widget.mode_changed.connect(
+            lambda mode: self._on_mode_changed("right", mode)
+        )
+
         self.splitter.addWidget(self.left_panel)
         self.splitter.addWidget(self.right_panel)
         self.splitter.setSizes([500, 500])
@@ -67,6 +75,18 @@ class MainWindow(QMainWindow):
         bl = QHBoxLayout(bar)
         bl.setContentsMargins(10, 0, 10, 0)
         bl.setSpacing(8)
+
+        # Sync view checkbox
+        from PySide6.QtWidgets import QCheckBox
+        self._sync_view_cb = QCheckBox("Sincronizar vista")
+        self._sync_view_cb.setToolTip(
+            "Al cambiar el modo de vista (Editar/Markdown) en un panel, "
+            "el otro panel cambia al mismo modo automáticamente"
+        )
+        self._sync_view_cb.setChecked(False)
+        bl.addWidget(self._sync_view_cb)
+
+        bl.addSpacing(8)
 
         lbl = QLabel("Cuerpo:")
         lbl.setObjectName("BarLabel")
@@ -99,6 +119,15 @@ class MainWindow(QMainWindow):
         bl.addWidget(btn_template)
 
         return bar
+
+    # ── Sync view ─────────────────────────────────────────────────────────
+
+    def _on_mode_changed(self, source_side: str, mode: str):
+        """Mirror view mode to the other panel if sync is on."""
+        if not self._sync_view_cb.isChecked():
+            return
+        dst = self.right_panel if source_side == "left" else self.left_panel
+        dst._body_editor_widget.set_mode_external(mode)
 
     # ── Auto-compare ──────────────────────────────────────────────────────
 
