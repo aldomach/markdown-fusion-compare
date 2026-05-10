@@ -73,16 +73,12 @@ class PropsPanel(QWidget):
         root.addWidget(self._build_header())
         root.addWidget(self._build_path_label())
 
-        # ── Props tab (QTabWidget with single tab) ────────────────────────
+        # ── Two tabs: YAML props and Body editor ──────────────────────────
         self.tabs = QTabWidget()
         self.tabs.setObjectName("PanelTabs")
-        self.tabs.addTab(self._build_props_tab(), "Propiedades YAML")
+        self.tabs.addTab(self._build_props_tab(),  "⚙ Propiedades YAML")
+        self.tabs.addTab(self._build_body_tab(),   "📝 Cuerpo")
         root.addWidget(self.tabs, stretch=1)
-
-        # ── Body editor — directly below, no tab wrapper ──────────────────
-        self._body_editor_widget = BodyEditor(self.side, self)
-        self.body_edit = self._body_editor_widget.editor
-        root.addWidget(self._body_editor_widget, stretch=1)
 
     def _build_header(self) -> QFrame:
         header = QFrame()
@@ -129,6 +125,8 @@ class PropsPanel(QWidget):
 
     def _build_props_tab(self) -> QWidget:
         tab = QWidget()
+        tab.setContextMenuPolicy(Qt.CustomContextMenu)
+        tab.customContextMenuRequested.connect(self._props_bg_context_menu)
         tl = QVBoxLayout(tab)
         tl.setContentsMargins(0, 0, 0, 0)
         tl.setSpacing(0)
@@ -137,8 +135,40 @@ class PropsPanel(QWidget):
         tl.addWidget(self._build_props_scroll())
         return tab
 
+    def _build_body_tab(self) -> QWidget:
+        """Body editor occupies the full panel tab."""
+        self._body_editor_widget = BodyEditor(self.side, self)
+        self.body_edit = self._body_editor_widget.editor
+        container = QWidget()
+        cl = QVBoxLayout(container)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(0)
+        cl.addWidget(self._build_body_search_bar())
+        cl.addWidget(self._body_editor_widget, stretch=1)
+        return container
+
+    def _build_body_search_bar(self) -> QFrame:
+        """Compact search bar at top of body tab."""
+        bar = QFrame()
+        bar.setObjectName("SearchBar")
+        bl = QHBoxLayout(bar)
+        bl.setContentsMargins(8, 3, 8, 3)
+        bl.setSpacing(6)
+        self._body_search_edit = QLineEdit()
+        self._body_search_edit.setObjectName("SearchEdit")
+        self._body_search_edit.setPlaceholderText("Buscar en el cuerpo…")
+        self._body_search_edit.setFixedHeight(26)
+        self._body_search_edit.returnPressed.connect(self._search_in_body_tab)
+        bl.addWidget(self._body_search_edit, stretch=1)
+        sb = QPushButton("🔍")
+        sb.setObjectName("SearchIconBtn")
+        sb.setFixedSize(28, 26)
+        sb.clicked.connect(self._search_in_body_tab)
+        bl.addWidget(sb)
+        return bar
+
     def _build_search_bar(self) -> QFrame:
-        """Search + extract-to-YAML bar shown above the prop list."""
+        """Search + extract-to-YAML bar in the YAML props tab."""
         bar = QFrame()
         bar.setObjectName("SearchBar")
         bl = QHBoxLayout(bar)
@@ -159,14 +189,14 @@ class PropsPanel(QWidget):
         search_btn.clicked.connect(self._search_in_body)
         bl.addWidget(search_btn)
 
-        add_prop_btn = QPushButton("+ Agregar como propiedad")
+        add_prop_btn = QPushButton("+ Como propiedad")
         add_prop_btn.setObjectName("BulkApplyBtn")
         add_prop_btn.setFixedHeight(26)
         add_prop_btn.setToolTip("Agrega el texto del campo como nueva propiedad YAML")
         add_prop_btn.clicked.connect(self._add_as_prop)
         bl.addWidget(add_prop_btn)
 
-        add_tag_btn = QPushButton("+ Agregar a tags")
+        add_tag_btn = QPushButton("+ A tags")
         add_tag_btn.setObjectName("BulkApplyBtn")
         add_tag_btn.setFixedHeight(26)
         add_tag_btn.setToolTip("Agrega el texto a la propiedad 'tags' como ítem de lista")
@@ -204,12 +234,27 @@ class PropsPanel(QWidget):
         copy_btn.clicked.connect(self._bulk_copy_selected)
         bl.addWidget(copy_btn)
 
+        # ── Add property ──────────────────────────────────────────────────
+        add_prop_btn = QPushButton("＋ Propiedad")
+        add_prop_btn.setObjectName("AddPropBtn")
+        add_prop_btn.setFixedHeight(26)
+        add_prop_btn.setToolTip("Agregar nueva propiedad vacía")
+        add_prop_btn.clicked.connect(self._prompt_add_prop)
+        bl.addWidget(add_prop_btn)
+
         bl.addStretch()
+
+        # Both panels checkbox
+        self._both_panels_cb = QCheckBox("En ambos")
+        self._both_panels_cb.setToolTip(
+            "Cuando está activo, agregar propiedad la crea en ambos paneles"
+        )
+        bl.addWidget(self._both_panels_cb)
 
         # Updated timestamp toggle
         self._updated_checkbox = QCheckBox("updated")
         self._updated_checkbox.setToolTip(
-            "Al guardar, agrega/actualiza la propiedad 'updated' con la fecha y hora actual"
+            "Al guardar, agrega/actualiza 'updated' con fecha y hora actual"
         )
         bl.addWidget(self._updated_checkbox)
 
@@ -219,13 +264,11 @@ class PropsPanel(QWidget):
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setObjectName("PropsScroll")
-
         self.props_container = QWidget()
         self.props_layout = QVBoxLayout(self.props_container)
         self.props_layout.setContentsMargins(0, 0, 0, 0)
         self.props_layout.setSpacing(1)
         self.props_layout.addStretch()
-
         self.scroll.setWidget(self.props_container)
         return self.scroll
 
@@ -336,38 +379,40 @@ class PropsPanel(QWidget):
     # ── Search / add-as-prop ──────────────────────────────────────────────
 
     def _search_in_body(self):
-        """Highlight search term in body editor."""
+        """Highlight search term in body editor (from YAML tab search bar)."""
         term = self._search_edit.text().strip()
         if not term:
             return
-        body = self.body_edit.toPlainText()
-        if term.lower() in body.lower():
-            # Switch to body tab and let the user see the result
-            self.tabs.setCurrentIndex(1)
-            from PySide6.QtGui import QTextCursor, QTextDocument
-            cursor = self.body_edit.document().find(term, 0, QTextDocument.FindFlag(0))
-            if not cursor.isNull():
-                self.body_edit.setTextCursor(cursor)
+        # Switch to body tab and search
+        self.tabs.setCurrentIndex(1)
+        self._do_search_in_body(term)
+
+    def _search_in_body_tab(self):
+        """Search from the body tab search bar."""
+        term = self._body_search_edit.text().strip()
+        if not term:
+            return
+        self._do_search_in_body(term)
+
+    def _do_search_in_body(self, term: str):
+        """Find term in body editor and select it."""
+        from PySide6.QtGui import QTextDocument
+        cursor = self.body_edit.document().find(term, 0, QTextDocument.FindFlag(0))
+        if not cursor.isNull():
+            self.body_edit.setTextCursor(cursor)
             mw = self._main_window()
-            if mw:
-                mw.statusBar().showMessage(f"'{term}' encontrado en el cuerpo.")
+            if mw: mw.statusBar().showMessage(f"'{term}' encontrado en el cuerpo.")
         else:
             mw = self._main_window()
-            if mw:
-                mw.statusBar().showMessage(f"'{term}' no encontrado en el cuerpo.")
+            if mw: mw.statusBar().showMessage(f"'{term}' no encontrado en el cuerpo.")
 
     def _add_as_prop(self):
         """Add search field text as a new blank YAML property."""
         text = self._search_edit.text().strip()
         if not text:
             return
-        # Use text as key, empty value
-        self.set_prop(text, "")
+        self._do_add_prop(text)
         self._search_edit.clear()
-        mw = self._main_window()
-        if mw:
-            mw._recompare(silent=True)
-            mw.statusBar().showMessage(f"Propiedad '{text}' agregada.")
 
     def _add_as_tag(self):
         """Add search field text as an item in the 'tags' list property."""
@@ -380,6 +425,37 @@ class PropsPanel(QWidget):
         if mw:
             mw._recompare(silent=True)
             mw.statusBar().showMessage(f"'{text}' agregado a tags.")
+
+    def _prompt_add_prop(self):
+        """Open a small input dialog to name and add a new property."""
+        from PySide6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getText(
+            self, "Nueva propiedad", "Nombre de la propiedad:"
+        )
+        if ok and name.strip():
+            self._do_add_prop(name.strip())
+
+    def _do_add_prop(self, key: str):
+        """Add key as empty prop here, and optionally in the other panel."""
+        self.set_prop(key, "")
+        mw = self._main_window()
+        if mw:
+            if self._both_panels_cb.isChecked():
+                other = mw.right_panel if self.side == "left" else mw.left_panel
+                other.set_prop(key, "")
+                mw.statusBar().showMessage(f"Propiedad '{key}' agregada en ambos paneles.")
+            else:
+                mw.statusBar().showMessage(f"Propiedad '{key}' agregada.")
+            mw._recompare(silent=True)
+
+    def _props_bg_context_menu(self, pos):
+        """Right-click on the YAML props tab background."""
+        from PySide6.QtWidgets import QInputDialog
+        menu = QMenu(self)
+        menu.addAction("＋ Agregar nueva propiedad").triggered.connect(
+            self._prompt_add_prop
+        )
+        menu.exec(self.tabs.currentWidget().mapToGlobal(pos))
 
     # ── Prop update helpers (go through NoteFile) ─────────────────────────
 
