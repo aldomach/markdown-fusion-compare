@@ -652,7 +652,8 @@ class _BodyTextEdit(QTextEdit):
 
     def __init__(self, side: str, parent: BodyEditor):
         super().__init__(parent)
-        self.side        = side
+        self.side         = side
+        self._body_editor = parent
         self._body_editor = parent
 
     def keyPressEvent(self, event: QKeyEvent):
@@ -675,6 +676,15 @@ class _BodyTextEdit(QTextEdit):
             menu.addSeparator()
             other = "derecha"   if self.side == "left" else "izquierda"
             arr   = "→"         if self.side == "left" else "←"
+
+            # WikiLink conversion
+            from core.utils import is_wikilink, to_wikilink
+            if not is_wikilink(selected_text):
+                menu.addAction("⟳ Convertir selección a WikiLink").triggered.connect(
+                    lambda: self._convert_selection_to_wikilink()
+                )
+                menu.addSeparator()
+
             for label, pos in [
                 (f"{arr} Copiar al panel {other} — en posición del cursor", "cursor"),
                 (f"{arr} Copiar al panel {other} — al principio",           "start"),
@@ -685,6 +695,21 @@ class _BodyTextEdit(QTextEdit):
                         self._copy_to_other(selected_text, p)
                 )
         menu.exec(event.globalPos())
+
+    def _convert_selection_to_wikilink(self):
+        """Wrap the current selection as [[selection]]."""
+        from core.utils import to_wikilink
+        cursor = self.textCursor()
+        if not cursor.hasSelection():
+            return
+        text = cursor.selectedText().strip()
+        wiki = to_wikilink(text)
+        cursor.insertText(wiki)
+        # Update model silently
+        be = self._body_editor
+        panel = be._props_panel()
+        if panel:
+            panel.note.set_body_silent(self.toPlainText())
 
     def _copy_to_other(self, text: str, position: str):
         from ui.main_window import MainWindow
