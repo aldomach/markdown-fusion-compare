@@ -145,6 +145,20 @@ class NoteFile:
         self._push_history()
         self._body = body
 
+    def set_body_silent(self, body: str) -> None:
+        """Update body WITHOUT pushing to history.
+        Used for debounced editor sync — avoids recording every keystroke.
+        Call checkpoint() after a meaningful pause to save a real undo point.
+        """
+        self._body = body
+        self._dirty = True
+
+    def checkpoint(self) -> None:
+        """Push current state to history as an undo point.
+        Called by the editor after a debounce delay (e.g. 800ms of inactivity).
+        """
+        self._push_history()
+
     def set_props_and_body(self, props: dict, body: str) -> None:
         """Bulk replace — used when user edits raw text."""
         self._push_history()
