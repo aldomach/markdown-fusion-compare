@@ -196,19 +196,21 @@ class NodeDictionary:
         right_body:     str,
         min_len:        int  = 4,
         use_stopwords:  bool = True,
+        whole_word:     bool = True,
     ) -> CandidateResult:
         """
-        Find words/phrases common to both bodies that are candidates for
-        WikiLink conversion.
+        Find words/phrases common to both bodies.
 
-        Priority order:
-          1. Entries already in the node dictionary (found in both bodies)
-          2. Multi-word phrases (2-4 words) common to both
-          3. Single words common to both (respecting min_len)
-
-        Blacklisted entries are excluded at all levels.
-        If use_stopwords=True, single-word candidates that are stop-words
-        are excluded (but stop-words *inside* multi-word phrases are kept).
+        Rules:
+          - Every individual token in a phrase must have >= min_len
+            ALPHANUMERIC characters (spaces don't count toward min_len)
+          - If use_stopwords=True, any token that is a stop-word disqualifies
+            the entire phrase (single words) or the token itself (multi-word:
+            stop-words are allowed inside phrases but the phrase must contain
+            at least one non-stop-word token that meets min_len)
+          - whole_word=True: matches only at word boundaries
+          - Blacklisted entries are excluded at all levels
+          - Priority: dict entries > multi-word phrases > single words
         """
         result = CandidateResult()
 
@@ -216,26 +218,30 @@ class NodeDictionary:
         for node in self._nodes:
             if self.is_blacklisted(node):
                 continue
-            if _phrase_in_body(node, left_body) and _phrase_in_body(node, right_body):
+            if _phrase_in_body(node, left_body, whole_word) and \
+               _phrase_in_body(node, right_body, whole_word):
                 result.from_dict.append(node)
 
-        # 2. Multi-word phrases (2-4 tokens) common to both
-        left_phrases  = _extract_phrases(left_body,  max_n=4)
-        right_phrases = _extract_phrases(right_body, max_n=4)
+        # 2. Multi-word phrases common to both (token-level validation)
+        left_phrases  = _extract_phrases(left_body,  max_n=4,
+                                          min_len=min_len,
+                                          use_stopwords=use_stopwords)
+        right_phrases = _extract_phrases(right_body, max_n=4,
+                                          min_len=min_len,
+                                          use_stopwords=use_stopwords)
         common_phrases = left_phrases & right_phrases
 
         for phrase in sorted(common_phrases, key=lambda p: (-len(p.split()), p.lower())):
             if self.is_blacklisted(phrase):
                 continue
-            # Skip if a longer phrase already covers this one
-            already_covered = any(
-                phrase.lower() in existing.lower()
-                for existing in result.multi_phrases + result.from_dict
+            already = any(
+                phrase.lower() in e.lower()
+                for e in result.multi_phrases + result.from_dict
             )
-            if not already_covered:
+            if not already:
                 result.multi_phrases.append(phrase)
 
-        # 3. Single words
+        # 3. Single words (each token must meet min_len on its own)
         left_words  = _tokenise(left_body,  min_len, use_stopwords)
         right_words = _tokenise(right_body, min_len, use_stopwords)
         common_words = left_words & right_words
@@ -243,7 +249,6 @@ class NodeDictionary:
         for word in sorted(common_words):
             if self.is_blacklisted(word):
                 continue
-            # Skip if already covered by a dict entry or multi-word phrase
             covered = any(
                 word.lower() in p.lower()
                 for p in result.from_dict + result.multi_phrases
@@ -284,13 +289,14 @@ class NodeDictionary:
 # ── Pure helpers ──────────────────────────────────────────────────────────────
 
 def _tokenise(text: str, min_len: int, use_stopwords: bool) -> set[str]:
-    """Extract single words from text."""
+    """Extract single words. min_len counts only alphanumeric chars."""
     words: set[str] = set()
     for raw in text.split():
         word = raw.strip(_STRIP_CHARS).lower()
+        alnum_len = sum(1 for c in word if c.isalnum())
         if (
             not word
-            or len(word) < min_len
+            or alnum_len < min_len
             or word.isdigit()
             or word.startswith("[[")
         ):
@@ -301,36 +307,60 @@ def _tokenise(text: str, min_len: int, use_stopwords: bool) -> set[str]:
     return words
 
 
-def _extract_phrases(text: str, max_n: int = 4) -> set[str]:
+def _extract_phrases(
+    text:         str,
+    max_n:        int  = 4,
+    min_len:      int  = 4,
+    use_stopwords: bool = True,
+) -> set[str]:
     """
     Extract 2..max_n word phrases from text.
-    Skips tokens that are purely punctuation or numbers.
-    Does NOT filter stop-words inside phrases.
+
+    Token-level rules:
+      - Each token must have >= min_len ALPHANUMERIC characters
+      - If use_stopwords=True, tokens that are stop-words are excluded;
+        a phrase where ALL tokens are stop-words is rejected
+      - The phrase must contain at least one token that passes min_len
+        AND is not a stop-word
     """
-    # Tokenise preserving original case (for display), strip punctuation
+    # Build validated token list preserving original case
     tokens: list[str] = []
     for raw in text.split():
         t = raw.strip(_STRIP_CHARS)
-        if t and not t.isdigit() and not t.startswith("[["):
-            tokens.append(t)
+        if not t or t.isdigit() or t.startswith("[["):
+            continue
+        alnum_len = sum(1 for c in t if c.isalnum())
+        if alnum_len < min_len:
+            continue
+        tokens.append(t)
 
     phrases: set[str] = set()
     for n in range(2, max_n + 1):
         for i in range(len(tokens) - n + 1):
-            phrase = " ".join(tokens[i:i + n])
-            # Require at least one non-stop-word token
-            has_content = any(
-                tok.lower() not in ALL_STOP_WORDS for tok in tokens[i:i + n]
-            )
-            if has_content:
-                phrases.add(phrase)
+            chunk = tokens[i:i + n]
+            chunk_lower = [t.lower() for t in chunk]
+
+            if use_stopwords:
+                # Reject if any token is a stop-word without a valid anchor
+                has_valid = any(
+                    t not in ALL_STOP_WORDS and
+                    sum(1 for c in t if c.isalnum()) >= min_len
+                    for t in chunk_lower
+                )
+                if not has_valid:
+                    continue
+                # Also reject phrases that START or END with a stop-word
+                if chunk_lower[0] in ALL_STOP_WORDS or chunk_lower[-1] in ALL_STOP_WORDS:
+                    continue
+
+            phrases.add(" ".join(chunk))
     return phrases
 
 
-def _phrase_in_body(phrase: str, body: str) -> bool:
-    """Case-insensitive whole-phrase search in body."""
-    return bool(re.search(
-        r'(?<!\w)' + re.escape(phrase) + r'(?!\w)',
-        body,
-        re.IGNORECASE,
-    ))
+def _phrase_in_body(phrase: str, body: str, whole_word: bool = True) -> bool:
+    """Case-insensitive search. whole_word=True uses word boundaries."""
+    if whole_word:
+        pattern = r'(?<!\w)' + re.escape(phrase) + r'(?!\w)'
+    else:
+        pattern = re.escape(phrase)
+    return bool(re.search(pattern, body, re.IGNORECASE))
