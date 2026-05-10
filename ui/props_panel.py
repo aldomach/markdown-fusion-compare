@@ -73,21 +73,16 @@ class PropsPanel(QWidget):
         root.addWidget(self._build_header())
         root.addWidget(self._build_path_label())
 
-        from ui.source_view import SourceView
-        from ui.markdown_view import MarkdownView
-
+        # ── Props tab (QTabWidget with single tab) ────────────────────────
         self.tabs = QTabWidget()
         self.tabs.setObjectName("PanelTabs")
         self.tabs.addTab(self._build_props_tab(), "Propiedades YAML")
-        self.tabs.addTab(self._build_body_tab(),  "Cuerpo")
+        root.addWidget(self.tabs, stretch=1)
 
-        self._source_view   = SourceView(self)
-        self._markdown_view = MarkdownView(self)
-        self.tabs.addTab(self._source_view,   "Fuente")
-        self.tabs.addTab(self._markdown_view, "Markdown")
-
-        self.tabs.currentChanged.connect(self._on_tab_changed)
-        root.addWidget(self.tabs)
+        # ── Body editor — directly below, no tab wrapper ──────────────────
+        self._body_editor_widget = BodyEditor(self.side, self)
+        self.body_edit = self._body_editor_widget.editor
+        root.addWidget(self._body_editor_widget, stretch=1)
 
     def _build_header(self) -> QFrame:
         header = QFrame()
@@ -180,16 +175,6 @@ class PropsPanel(QWidget):
 
         return bar
 
-    def _on_tab_changed(self, index: int):
-        """Refresh source/markdown view when their tab is selected."""
-        self.note._body = self.body_edit.toPlainText()
-        source_idx   = self.tabs.indexOf(self._source_view)
-        markdown_idx = self.tabs.indexOf(self._markdown_view)
-        if index == source_idx:
-            self._source_view.refresh()
-        elif index == markdown_idx:
-            self._markdown_view.refresh()
-
     def _build_bulk_bar(self) -> QFrame:
         bar = QFrame()
         bar.setObjectName("BulkBar")
@@ -244,12 +229,6 @@ class PropsPanel(QWidget):
         self.scroll.setWidget(self.props_container)
         return self.scroll
 
-    def _build_body_tab(self) -> QWidget:
-        self._body_editor_widget = BodyEditor(self.side, self)
-        # Expose body_edit as inner QTextEdit so all existing code keeps working
-        self.body_edit = self._body_editor_widget.editor
-        return self._body_editor_widget
-
     # ── File I/O ──────────────────────────────────────────────────────────
 
     def open_file(self):
@@ -274,10 +253,9 @@ class PropsPanel(QWidget):
     def save_file(self):
         if self._updated_checkbox and self._updated_checkbox.isChecked():
             self.note.set_prop("updated", now_timestamp())
-
-        # Sync body from editor before saving
-        self.note.set_body(self.body_edit.toPlainText())
-
+        # Sync body from editor: silent sync (no undo point for save itself)
+        if not self._body_editor_widget._show_yaml:
+            self.note.set_body_silent(self.body_edit.toPlainText())
         if not self.note.filepath:
             path, _ = QFileDialog.getSaveFileName(self, "Guardar", "", "Markdown (*.md)")
             if not path:
@@ -298,7 +276,7 @@ class PropsPanel(QWidget):
         display_name = Path(self.note.filepath).name if self.note.filepath else "Nuevo archivo"
         self.path_lbl.setText(display_name)
         self.path_lbl.setToolTip(self.note.filepath or "")
-        self.body_edit.setPlainText(self.note.body)
+        self._body_editor_widget.refresh_from_note()
         self.rebuild_rows()
         self._update_undo_btn()
 
@@ -450,20 +428,14 @@ class PropsPanel(QWidget):
             self._insert_row(key, value)
 
     def _sync_source_view(self):
-        """Keep source tab in sync without switching to it."""
-        source_idx = self.tabs.indexOf(self._source_view)
-        # Only auto-refresh if not currently being viewed
-        # (if viewed, _on_tab_changed already handles it)
-        if self.tabs.currentIndex() != source_idx:
-            self.note._body = self.body_edit.toPlainText()
-            self._source_view.refresh()
+        """Keep note body model in sync after prop mutations."""
+        self.note._body = self.body_edit.toPlainText()
 
     # ── Undo ──────────────────────────────────────────────────────────────
 
     def _undo(self):
-        if self.note.undo():
-            self._sync_ui_from_note()
-            self._update_undo_btn()
+        """Delegate to BodyEditor which handles model + UI refresh."""
+        self._body_editor_widget.undo()
 
     def _update_undo_btn(self):
         self.undo_btn.setEnabled(self.note.can_undo)
