@@ -4,6 +4,10 @@ Herramienta de escritorio para comparar y fusionar dos notas Markdown de Obsidia
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue) ![PySide6](https://img.shields.io/badge/PySide6-6.x-green) ![Version](https://img.shields.io/badge/version-0.0.1-orange)
 
+<img width="1280" height="700" alt="20260513-165028_python" src="https://github.com/user-attachments/assets/ca5b6fa7-76e3-45d7-9541-29e6c0cb8368" />
+<img width="1282" height="732" alt="20260513-165155_python" src="https://github.com/user-attachments/assets/76b9dff7-2724-442f-89a1-6301b0f9f52b" />
+<img width="1280" height="700" alt="20260513-165201_python" src="https://github.com/user-attachments/assets/cf2d5901-0b56-4aa9-911e-a636f839885f" />
+
 ---
 
 ## Características
