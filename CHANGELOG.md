@@ -1,5 +1,18 @@
 # Changelog — Obsidian Markdown Comparator
 
+## [0.8.1] — Fix renderizado Markdown
+
+### Correcciones
+- **WikiLinks renderizados correctamente** — `[[enlace]]` aparece como
+  píldora morada en vez de CSS crudo. Causa: las comillas dobles dentro
+  del f-string `style="..."` rompían el atributo HTML. Fix: las reglas
+  de estilo se movieron a clases CSS (`.wikilink`, `.inline-code`, `.tag`)
+  definidas en el template, eliminando el conflicto de comillas
+- **Código inline** (`\`código\``) muestra fondo verde correcto en vez
+  de texto plano
+- **Itálica** no cruza saltos de línea (regex ajustado a `[^*\n]+`)
+- Estilos `a`, `del` y `blockquote` presentes en todas las vistas
+
 ## [0.8.0] — Layout en tabs + WikiLink en editor + Agregar propiedades
 
 ### Nuevas funciones
@@ -15,7 +28,6 @@
   crea simultáneamente en los dos paneles
 - **Clic derecho en fondo del panel YAML** — menú contextual con opción
   "＋ Agregar nueva propiedad"
-
 ## [0.7.0] — Editor unificado + Undo corregido + Nodos mejorado
 
 ### Nuevas funciones

@@ -1,21 +1,137 @@
-# Archivos compilados de Python
+# ── Build & distribución (PyInstaller) ──────────────────────────────
+build/
+dist/
+*.zip
+*.spec
+# Puedes quitar la siguiente línea si querés versionar el .spec
+# keepass_autotype_gui.spec
+
+# ── Python ───────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
 
-# Archivos temporales
-*.log
-*.pot
-*.tmp
-*.swp
-*.swo
-
-# Entornos virtuales
+# ── Entornos virtuales ───────────────────────────────────────────────
 .venv/
-env/
 venv/
+env/
 ENV/
 
-# Archivos de configuración locales
+# ── Archivos del proyecto ────────────────────────────────────────────
+arbol_directorio.txt
+
+# ── Sistemas operativos ──────────────────────────────────────────────
+# Windows
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# ── Editores e IDEs ──────────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ── Variables de entorno ─────────────────────────────────────────────
+.env
+.env.*
 *.env
-*.local
+!.env.example
+
+# ── Bases de datos ───────────────────────────────────────────────────
+*.sqlite3
+*.db
+*.sql
+
+# ── Datos (archivos pesados o sensibles) ─────────────────────────────
+*.csv
+*.xlsx
+*.xls
+*.json
+# Si querés versionar alguno en particular, usá !nombre_archivo.json
+
+# ── Credenciales y configuración sensible ────────────────────────────
+secrets.py
+config.py
+credentials.py
+*.pem
+*.key
+*.p12
+*.pfx
+service_account*.json
+*secret*
+*credential*
+
+# ── Testing y cobertura ──────────────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+nosetests.xml
+
+# ── Miscelánea ───────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+
+# ═══════════════════════════════════════════════════════════════════════
+# ⚠️  ADVERTENCIA — HISTORIAL DE GIT
+# ═══════════════════════════════════════════════════════════════════════
+# El .gitignore solo evita que se suban archivos NUEVOS.
+# Los archivos que ya fueron commiteados siguen en el historial aunque
+# los agregues acá. Para limpiar el historial completo usá:
+#
+#   pip install git-filter-repo
+#   git filter-repo --path build/ --invert-paths
+#
+# Esto es especialmente importante si subiste credenciales o claves.
+# ═══════════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════
+# 💡 SUGERENCIAS DE CONFIGURACIÓN ADICIONAL
+# ═══════════════════════════════════════════════════════════════════════
+#
+# 1. GITIGNORE GLOBAL (para reglas que aplican a TODOS tus proyectos)
+#    En lugar de repetir reglas de OS/editor en cada repo, configuralo
+#    una sola vez a nivel de usuario:
+#
+#      git config --global core.excludesFile ~/.gitignore_global
+#
+#    Y poné ahí las reglas de .DS_Store, Thumbs.db, .vscode/, etc.
+#
+# 2. .ENV.EXAMPLE (buena práctica)
+#    Nunca subas .env, pero sí commiteá un .env.example con las
+#    variables necesarias sin sus valores reales:
+#
+#      # .env.example
+#      API_KEY=
+#      DATABASE_URL=
+#      SECRET_KEY=
+#
+# 3. GIT-SECRETS (prevenir commits accidentales de credenciales)
+#    Instalá git-secrets para bloquear commits con claves o tokens:
+#
+#      https://github.com/awslabs/git-secrets
+#
+# 4. PRE-COMMIT HOOKS (automatizar chequeos antes de cada commit)
+#    Con la librería pre-commit podés correr linters, formatters y
+#    detectores de secretos automáticamente:
+#
+#      pip install pre-commit
+#      pre-commit install
+#
+# ═══════════════════════════════════════════════════════════════════════

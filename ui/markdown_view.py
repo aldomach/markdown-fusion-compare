@@ -180,48 +180,34 @@ def _inline(text: str) -> str:
             target, alias = inner.split("|", 1)
         else:
             target = alias = inner
-        return (
-            f'<span style="'
-            f'background:#2a1f3d;color:#cba6f7;'
-            f'border:1px solid #6c4a8a;border-radius:4px;'
-            f'padding:1px 6px;font-size:0.9em;">'
-            f'[[{alias}]]</span>'
-        )
+        return f'<span class="wikilink">[[{alias}]]</span>'
+
     text = re.sub(r'\[\[([^\]]+)\]\]', wiki_replace, text)
 
     # Markdown links [text](url)
     text = re.sub(
         r'\[([^\]]+)\]\(([^)]+)\)',
-        r'<a href="\2" style="color:#89b4fa;">\1</a>',
+        r'<a href="\2">\1</a>',
         text
     )
 
     # Inline code `code`
     text = re.sub(
         r'`([^`]+)`',
-        r'<code style="background:#313244;color:#a6e3a1;'
-        r'border-radius:3px;padding:1px 5px;">\1</code>',
+        r'<code class="inline-code">\1</code>',
         text
     )
 
     # Bold+italic ***text***
-    text = re.sub(r'\*{3}(.+?)\*{3}',
-                  r'<strong><em>\1</em></strong>', text)
+    text = re.sub(r'\*{3}(.+?)\*{3}', r'<strong><em>\1</em></strong>', text)
     # Bold **text**
-    text = re.sub(r'\*{2}(.+?)\*{2}',
-                  r'<strong>\1</strong>', text)
+    text = re.sub(r'\*{2}(.+?)\*{2}', r'<strong>\1</strong>', text)
     # Italic *text*
-    text = re.sub(r'\*(.+?)\*',
-                  r'<em>\1</em>', text)
+    text = re.sub(r'\*([^*\n]+?)\*',  r'<em>\1</em>', text)
     # Strikethrough ~~text~~
-    text = re.sub(r'~~(.+?)~~',
-                  r'<del>\1</del>', text)
+    text = re.sub(r'~~(.+?)~~', r'<del>\1</del>', text)
     # Tags  #tag
-    text = re.sub(
-        r'(?<!\[)#(\w+)',
-        r'<span style="color:#89b4fa;">#\1</span>',
-        text
-    )
+    text = re.sub(r'(?<!\[)#(\w+)', r'<span class="tag">#\1</span>', text)
 
     return text
 
@@ -230,7 +216,7 @@ _HTML_TEMPLATE = """
 <html><head><style>
   body  {{ background:#1e1e2e; color:#cdd6f4;
            font-family:'JetBrains Mono','Fira Code',monospace;
-           font-size:13px; margin:12px; }}
+           font-size:13px; margin:12px; line-height:1.6; }}
   h1    {{ color:#cba6f7; font-size:1.6em; border-bottom:1px solid #313244; padding-bottom:4px; }}
   h2    {{ color:#89b4fa; font-size:1.35em; }}
   h3    {{ color:#74c7ec; font-size:1.15em; }}
@@ -244,13 +230,25 @@ _HTML_TEMPLATE = """
   code  {{ font-family:'JetBrains Mono',monospace; }}
   blockquote {{ border-left:3px solid #585b70; margin:4px 0;
                 padding-left:12px; color:#a6adc8; }}
+  a     {{ color:#89b4fa; text-decoration:none; }}
+  del   {{ color:#6c7086; }}
   table {{ border-collapse:collapse; width:100%; margin:8px 0; }}
   th    {{ background:#313244; color:#89b4fa; border:1px solid #45475a;
            padding:6px 10px; text-align:left; }}
   td    {{ background:#1e1e2e; border:1px solid #313244;
            padding:5px 10px; color:#cdd6f4; }}
   tr:nth-child(even) td {{ background:#24243e; }}
-  del   {{ color:#6c7086; }}
+  .wikilink {{
+    background:#2a1f3d; color:#cba6f7;
+    border:1px solid #6c4a8a; border-radius:4px;
+    padding:1px 6px; font-size:0.9em; white-space:nowrap;
+  }}
+  .inline-code {{
+    background:#313244; color:#a6e3a1;
+    border-radius:3px; padding:1px 5px;
+    font-family:'JetBrains Mono',monospace; font-size:0.9em;
+  }}
+  .tag {{ color:#89b4fa; }}
 </style></head><body>{body}</body></html>
 """
 
